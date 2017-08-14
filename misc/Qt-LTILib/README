@@ -1,0 +1,30 @@
+Simple example for integration of the LTI-Lib-2 with Qt
+
+This example provides an idea of how to configure a project using qmake
+to integrate the LTI-Lib-2.
+
+Please check the file Qt-LTILib.pro for a basic configuration example.
+
+How to compile
+--------------
+
+Just call qmake and then use the generated Makefile:
+
+> qmake
+> make
+
+The executables will be left in the corresponding directories in "build". 
+For instance, you can call the debug version with
+
+> ./build/debug/Qt-LTILib
+
+The program will open a simple window with a label "This is a label", on which
+an image can be displayed.  In the menu "Test" you can call a method which
+prints in the console a vector or a matrix, or just displays on the label
+a simple lti::image filled with a random color.
+
+How to convert an lti::image to Qt types
+----------------------------------------
+
+The files ltiQt.h and ltiQt.cpp contain simple conversion functions.  More
+efficient methods should exist.
