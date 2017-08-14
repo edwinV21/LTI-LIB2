@@ -754,7 +754,7 @@ namespace lti {
      */
     bool trash(std::vector<functor::parameters*>& phenotypes) const;
 
-  protected:
+  //protected:
     /**
      * Returns used parameters
      */

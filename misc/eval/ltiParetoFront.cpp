@@ -427,7 +427,7 @@ namespace lti {
 
         delete pptr;
 
-        std::vector<paretoFront::individual> PE;
+        std::vector<individual> PE;
         parameters& parRW = getRWParameters();
         genetics* geneticTools = &parRW.getGeneticsObject();
 
@@ -435,7 +435,9 @@ namespace lti {
         //bool a=engine_->getParameters().setGeneticsObject( geneticTools  );
         std::cout<<"verifying LogFront parameters GE: " <<  engine_->getParameters().getGeneticsObject().name() <<"\n";
         std::cout<<"verifying LogFront parameters PF: " <<  par.getGeneticsObject().name() <<"\n";
+        engine_->setParetoFront(this);
         //engine_->apply(PE,true);
+
 
 
 
@@ -498,7 +500,7 @@ namespace lti {
     std::vector<individual> PE;  // The external population
 
 
-    if (pesa(PE)) {
+    if (engine_->apply(PE,0)) {
 
       // convert the PE vector inpadetto the standard output expected by the user
       front.resize(PE.size(),par.fitnessSpaceDimensionality);
@@ -558,7 +560,7 @@ namespace lti {
     //  - squeezeFactor (double)
     std::vector<individual> PE;
 
-    if (pesa(PE)) {
+    if (engine_->apply(PE,0)) {
 
       // convert the PE vector into the standard output expected by the user
       front.resize(PE.size(),par.fitnessSpaceDimensionality);
@@ -601,7 +603,7 @@ namespace lti {
 
     std::vector<individual> PE;
 
-    if (pesa(PE,true)) { // "true" means initFromLog
+    if (engine_->apply(PE,true)) { // "true" means initFromLog
 
       // convert the PE vector into the standard output expected by the user
       front.resize(PE.size(),par.fitnessSpaceDimensionality);
@@ -640,7 +642,7 @@ namespace lti {
 
     std::vector<individual> PE;
 
-    if (pesa(PE,true)) { // "true" means initFromLog
+    if (engine_->apply(PE,true)) { // "true" means initFromLog
 
       // convert the PE vector into the standard output expected by the user
       front.resize(PE.size(),par.fitnessSpaceDimensionality);

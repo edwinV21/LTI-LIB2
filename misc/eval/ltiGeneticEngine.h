@@ -10,6 +10,7 @@
 #include "ltiFunctor.h"
 #include "ltiProgressReporter.h"
 #include "ltiGenetics.h"
+#include "ltiRound.h"
 
 #include "ltiParetoFront.h"
 
@@ -441,7 +442,11 @@ class geneticEngine: public functor, public progressReporter   {
 
     parameters& getRWParameters();
 
-  protected:
+    void setParetoFront(paretoFront* pPf);
+
+    paretoFront* pf_;
+
+//  protected:
 
     /**
      * Structure characterizing an individual
@@ -484,7 +489,7 @@ class geneticEngine: public functor, public progressReporter   {
       double squeezeFactor;
     };
 
-    virtual bool apply(std::vector<individual>& PE,const bool initFromLog);
+    virtual bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog);
 
     class queueProcessing;
 

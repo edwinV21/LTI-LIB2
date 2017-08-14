@@ -10,7 +10,7 @@ namespace lti {
 
 class PESA : public geneticEngine {
   public :
-     virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
+     virtual bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog);
     PESA();
     //bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog );
 

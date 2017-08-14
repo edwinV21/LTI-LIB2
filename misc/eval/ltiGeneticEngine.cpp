@@ -41,6 +41,13 @@ geneticEngine* geneticEngine::clone() const {
    return new geneticEngine(*this);
  }
 */
+
+void geneticEngine::setParetoFront(paretoFront* pPf){
+  pf_=pPf;
+
+}
+
+
  geneticEngine* geneticEngine::newInstance() const {
    return new geneticEngine();
  }
@@ -183,7 +190,7 @@ geneticEngine* geneticEngine::clone() const {
     _LTI_RETURN_CLASS_NAME
   }
 
-  bool geneticEngine::apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog){
+  bool geneticEngine::apply(std::vector<paretoFront::individual>& PE,const bool initFromLog){
       std::cout <<"in apply GE \n";
       return true;
   }
@@ -282,6 +289,15 @@ geneticEngine* geneticEngine::clone() const {
     geneticsObject_=obj;
     return (notNull(geneticsObject_));
   }
+
+
+
+
+
+
+
+
+
 
 
   // -------------------------------------------------------------------------
