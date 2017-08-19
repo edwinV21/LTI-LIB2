@@ -145,6 +145,10 @@ namespace lti {
     streamProgressInfo progInfo;
     pf.setProgressObject(progInfo);
     pf.getProgressObject().setDetailLevel(verboseLevel);
+    //pf._engine->setProgressObject(progInfo);
+    //pf._engine->getProgressObject().setDetailLevel(verboseLevel);
+
+
 
 
     // The 'resume' framework is relatively simple:
@@ -180,7 +184,9 @@ namespace lti {
       // and now, find the pareto front
       pf.apply(front);
     }
+    //std::cout <<"verif 1000 \n";
   }
+
 }
 
 int main(int argc,char *argv[]) {
@@ -188,17 +194,6 @@ int main(int argc,char *argv[]) {
     lti::example testObj;
     testObj(argc,argv);
     std::cout << "Test at the end x!" << std::endl;
-
-    //lti::paretoFront::parameters pfPar;
-    //lti::geneticsTester::parameters csPar;
-
-
-    //std::vector<lti::paretoFront::individual> PE;
-    //lti::geneticsTester csg(csPar);
-    // tell the parameters of the pareto front to use the given genetics object
-    //pfPar.setGeneticsObject(csg);
-    // create a pareto object with the proper parameters
-    //lti::paretoFront pf(pfPar);
 
     //prueba->pesa(PE,1,pf);
 

@@ -10,10 +10,15 @@ namespace lti {
 
 class PESA : public geneticEngine {
   public :
-     virtual bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog);
+     virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
+
+
     PESA();
     //bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog );
 
+
+
+    struct scanLess;
 
     virtual ~PESA();
     PESA(const PESA& other);
@@ -22,16 +27,46 @@ class PESA : public geneticEngine {
 
     virtual const std::string& name() const;
 
+    struct scanLess;
+
     /**
      * Returns a pointer to a clone of this functor.
      */
     virtual PESA* clone() const;
 
     /**
-     * eturns a pointer to a clone of this functor.
+     * Returns a pointer to a clone of this functor.
      */
     virtual PESA* newInstance() const;
 
+
+    /**
+     * LUT-based method for computing g(x) = exp(-x^2).
+     * The value given is x and not x^2
+     *
+     * Only values between 0 and 3 will produce something, all the rest
+     * produce zero as output
+     */
+    static const double* expLUT_;
+
+
+    /**
+     * Initialize expLUT
+     */
+    bool initExpLUT();
+
+    /**
+     * An efficient way to compute g(x)=exp(-x^2)
+     */
+    inline double exp2(const double& x) const;
+
+
+
+    /**
+     * Compute the fitness distance between the given two fitness points
+     */
+    inline double fitnessDistance(const dvector& a,
+                                  const dvector& b) ;
 
 
 
@@ -74,7 +109,6 @@ class PESA : public geneticEngine {
        * @return a reference to this parameters object
        */
       parameters& copy(const parameters& other);
-
 
 
 
@@ -373,13 +407,102 @@ class PESA : public geneticEngine {
       genetics* geneticsObject_;
 
 
-
-
     };
 
     const parameters& getParameters() const;
 
+    virtual bool initInternalPopulation(std::vector<geneticEngine::individual>& data);
 
+
+    virtual bool getDataFromLog(const std::string& logFile,
+                        geneticEngine::parameters& params,
+                        std::vector<individual>& data,
+                        dmatrix& boundingBox,
+                        int& lastIter) const;
+
+
+   int findLastIter(const std::string& logFile) const;
+
+   void initBoundingBox(dmatrix& boundingBox) const;
+
+
+   /**
+    * Update bounding box considering the given fitness space point.
+    *
+    * @return True if there was a change in the bounding box, false if
+    * given point was already within the bounding box.
+    */
+   bool updateBoundingBox(const dvector& pnt,
+                                dmatrix& boundingBox) const;
+
+
+
+  void updateFitnessSpaceSubdivision();
+
+  /**
+   * Update density factors.
+   *
+   * Recompute all squeeze factors for the individuals in the
+   * external population
+   */
+  void updateDensityFactors(std::vector<individual>& PE);
+
+
+
+    //private:
+      /**
+       * @name PESA Algorithm
+       */
+      //@{
+      /**
+       * The PESA Algorithm
+       *
+       * Computes the Pareto front, which will be return as list of individuals
+       * in PE.
+       */
+      //bool pesa(std::vector<individual>& PE,const bool initFromLog=false);
+
+      /**
+       * Insert non-dominated member from PI to PE
+       *
+       * Return the number of elements of PI that were inserted in PE.
+       */
+      int insert(std::vector<geneticEngine::individual>& PI,
+                 std::vector<geneticEngine::individual>& PE);
+
+      /**
+       * Insert non-dominated member into PE
+       */
+      bool insert(geneticEngine::individual& genotype,
+                  std::vector<geneticEngine::individual>& PE);
+
+      /**
+       * Returns a random individual in the given population, which has
+       * been selected because it had a smaller squeeze factor in a binary
+       * tournament.
+       */
+      int binaryTournament(const std::vector<geneticEngine::individual>& PE) const;
+
+      /**
+       * Return true if a>b (a dominates b) after the definition used in the
+       * Pareto literature:
+       *
+       * a>b <=> for all i a[i]>=b[i] and it exists one i such that a[i]>b[i]
+       *
+       * The arguments a and b represent here multidimensional fitness values.
+       */
+      bool dominate(const dvector& a,
+                    const dvector& b) const;
+
+      //@}
+
+      bool logEntry(const geneticEngine::individual& ind,const bool markDead=false);
+
+
+      virtual void initAlg(dmatrix& bbox_,dvector& sigmas_ ,univariateContinuousDistribution& rnd_,
+         bool& logEvaluations_, bool& logFront_ , lispStreamHandler& olsh_,std::ofstream* logOut_,
+         std::list<individual>& deadIndividuals_ ,
+          const double* expLUT_);
 
 
 

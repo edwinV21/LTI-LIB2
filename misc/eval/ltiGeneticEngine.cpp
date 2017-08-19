@@ -36,16 +36,54 @@ namespace lti {
    _LTI_RETURN_CLASS_NAME
  }
 
+
+ void geneticEngine::chromosomeToString(const chromosome& genotype,
+                                      std::string& str) const {
+   str.resize(genotype.size(),'0');
+   unsigned int i;
+   for (i=0;i<genotype.size();++i) {
+     if (genotype[i]) {
+       str[i]='1';
+     }
+   }
+ }
+
+ void geneticEngine::stringToChromosome(const std::string& str,
+                                      chromosome& genotype) const {
+   genotype.resize(str.length());
+   unsigned int i;
+   for (i=0;i<genotype.size();++i) {
+     genotype[i] = (str[i]!='0');
+   }
+ }
+
+
+
+ void geneticEngine::initAlg(dmatrix& pbbox_,dvector& psigmas_ ,univariateContinuousDistribution& prnd_,
+    bool& plogEvaluations_, bool& plogFront_ , lispStreamHandler& polsh_,std::ofstream* plogOut_
+    , std::list<individual>& pdeadIndividuals_ ,
+     const double* expLUT_){
+      bbox_=pbbox_;
+      sigmas_=psigmas_;
+      rnd_=prnd_;
+      logEvaluations_=plogEvaluations_;
+      logFront_=plogFront_;
+      olsh_=polsh_;
+      logOut_=plogOut_;
+      deadIndividuals_=pdeadIndividuals_;
+
+    }
+
 /*
 geneticEngine* geneticEngine::clone() const {
    return new geneticEngine(*this);
  }
 */
 
-void geneticEngine::setParetoFront(paretoFront* pPf){
+/*void geneticEngine::setParetoFront(paretoFront* pPf){
   pf_=pPf;
 
-}
+}*/
 
 
  geneticEngine* geneticEngine::newInstance() const {
@@ -66,6 +104,14 @@ void geneticEngine::setParetoFront(paretoFront* pPf){
     // all other attributes are initialized by updateParameters, called when
     // the copy of the parent class sets the parameters.
     return *this;
+  }
+
+  bool geneticEngine::getDataFromLog(const std::string& logFile,
+                                   parameters& params,
+                                   std::vector<individual>& data,
+                                   dmatrix& boundingBox,
+                                   int& lastIter) const {
+    return true;
   }
 
 
@@ -190,10 +236,27 @@ void geneticEngine::setParetoFront(paretoFront* pPf){
     _LTI_RETURN_CLASS_NAME
   }
 
-  bool geneticEngine::apply(std::vector<paretoFront::individual>& PE,const bool initFromLog){
+  bool geneticEngine::apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog){
       std::cout <<"in apply GE \n";
       return true;
   }
+
+  struct  geneticEngine::scanLess
+    : public std::binary_function<dvector,dvector,bool> {
+    bool operator()(const individual& a,
+                    const individual& b) const {
+      int i=a.fitness.lastIdx();
+      for (;i>=0;--i) {
+        if (a.fitness[i]<b.fitness[i]) {
+          return true;
+        } else if (b.fitness[i]<a.fitness[i]) {
+          return false;
+        }
+      }
+      // they are equal
+      return false;
+    }
+  };
 
 
 
@@ -289,6 +352,8 @@ void geneticEngine::setParetoFront(paretoFront* pPf){
     geneticsObject_=obj;
     return (notNull(geneticsObject_));
   }
+
+
 
 
 

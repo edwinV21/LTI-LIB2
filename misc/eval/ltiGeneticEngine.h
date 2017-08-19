@@ -11,8 +11,12 @@
 #include "ltiProgressReporter.h"
 #include "ltiGenetics.h"
 #include "ltiRound.h"
+#include "ltiThread.h"
+#include <fstream>
+#include <sstream>
+#include "ltiMatrix.h"
+#include "ltiLispStreamHandler.h"
 
-#include "ltiParetoFront.h"
 
 
 
@@ -29,9 +33,8 @@ namespace std {
 
 
 
+
 namespace lti{
-
-
 
 
 class geneticEngine: public functor, public progressReporter   {
@@ -418,7 +421,6 @@ class geneticEngine: public functor, public progressReporter   {
 
 
 
-
     // virtual void setQueueProcessor(  );
     virtual const std::string& name() const;
     /**
@@ -442,9 +444,9 @@ class geneticEngine: public functor, public progressReporter   {
 
     parameters& getRWParameters();
 
-    void setParetoFront(paretoFront* pPf);
+    //void setParetoFront(paretoFront* pPf);
 
-    paretoFront* pf_;
+//    paretoFront* pf_;
 
 //  protected:
 
@@ -489,7 +491,151 @@ class geneticEngine: public functor, public progressReporter   {
       double squeezeFactor;
     };
 
-    virtual bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog);
+    std::list<individual> deadIndividuals_;
+
+
+    /**
+     * Initialize the internal population.
+     *
+     * You usually don't want to reimplement this method, but
+     * randomIndividual().  However, you can reimplemented it if you
+     * need more that the standard generation of
+     * parameters::internalPopulationSize random individuals.
+     *
+     * @return true if successful, false otherwise.
+     */
+
+
+  //private:
+    /**
+     * @name PESA Algorithm
+     */
+    //@{
+    /**
+     * The PESA Algorithm
+     *
+     * Computes the Pareto front, which will be return as list of individuals
+     * in PE.
+     */
+    //bool pesa(std::vector<individual>& PE,const bool initFromLog=false);
+
+    /**
+     * Insert non-dominated member from PI to PE
+     *
+     * Return the number of elements of PI that were inserted in PE.
+     */
+    int insert(std::vector<individual>& PI,
+               std::vector<individual>& PE);
+
+    /**
+     * Insert non-dominated member into PE
+     */
+    bool insert(individual& genotype,
+                std::vector<individual>& PE);
+
+    /**
+     * Returns a random individual in the given population, which has
+     * been selected because it had a smaller squeeze factor in a binary
+     * tournament.
+     */
+    int binaryTournament(const std::vector<individual>& PE) const;
+
+    /**
+     * Log all evaluation
+     */
+    bool logEvaluations_;
+
+
+
+
+
+    //@}
+
+
+    /**
+     * Bounding box.
+     *
+     * The size of this matrix will be:
+     * 2 x parameters::fitnessSpaceDimensionality
+     */
+    dmatrix bbox_;
+
+    /**
+     * Sigmas
+     *
+     * The fitness space grid size will be used to compute the std. deviation
+     * per each axis.
+     */
+    dvector sigmas_;
+
+
+    /**
+     * Get data from log
+     *
+     * This method reads the log file and create the corresponding data.
+     * Since usually the logs are broken (the user breaks the execution of
+     * a long computing process), this method needs to cope with broken
+     * files.
+     *
+     * @param logFile name of the file with the log
+     * @param params parameters as written in the log file
+     * @param data all data found in the log file.
+     * @param boundingBox bounding box of the data
+     * @return true if successful.
+     */
+    virtual bool getDataFromLog(const std::string& logFile,
+                        parameters& params,
+                        std::vector<individual>& data,
+                        dmatrix& boundingBox,
+                        int& lastIter) const;
+
+
+    /**
+     * Convert a chromosome into a string, to be saved in the log file
+     */
+    void chromosomeToString(const chromosome& genotype,std::string& str) const;
+
+
+    /**
+     * Convert a string into a chromosome into a string, to be loaded from
+     * the log file
+     */
+    void stringToChromosome(const std::string& str,
+                            chromosome& genotype) const;
+
+
+    /**
+     * Class used to compare individuals in "scanning order"
+     */
+    struct scanLess;
+
+
+    /**
+     * Output stream used to write the log
+     */
+    std::ofstream* logOut_;
+
+    /**
+     * Lisp-Stream-Handler used for log output
+     */
+    lispStreamHandler olsh_;
+
+    /**
+     * Copied from the parameters
+     */
+    bool logFront_;
+
+
+
+    virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
+
+    virtual void initAlg(dmatrix& bbox_,dvector& sigmas_ ,univariateContinuousDistribution& rnd_,
+       bool& logEvaluations_, bool& logFront_ , lispStreamHandler& olsh_,std::ofstream* logOut_,
+     std::list<individual>& deadIndividuals_ ,
+     const double* expLUT_);
+
+
+    mutable univariateContinuousDistribution rnd_;
 
     class queueProcessing;
 

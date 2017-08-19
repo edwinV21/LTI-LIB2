@@ -7,6 +7,14 @@
 #include "ltiProgressReporter.h"
 #include "ltiTimer.h"
 
+#include <limits>
+#include <string>
+#include <sstream>
+#include <algorithm>
+
+#include "ltiRound.h"
+
+
 
 
 
@@ -177,108 +185,217 @@ PESA::PESA() {
  }
 
 
+ const double* PESA::expLUT_ = 0;
+
+ bool PESA::initExpLUT() {
+   if (isNull(expLUT_)) {
+     // A static "singleton" LUT.  The compiler will remove it at the end.
+     static const int lutSize = 3*1024;
+     static double theLUT[lutSize];
+     int i;
+     for (i=0;i<lutSize;++i) {
+       double fi = static_cast<double>(3.0*i)/lutSize;
+       theLUT[i] = exp(-(fi*fi)/2.0);
+     }
+     expLUT_ = theLUT;
+   }
+
+   return true;
+ }
+
+ /**
+  * An efficient way to compute g(x)=exp(-x^2/2)
+  */
+ inline double PESA::exp2(const double& x) const {
+   // 3 is the well known factor: above 3*sigma the Gaussian
+   // is negligible.
+   const double ax = abs(x);
+   return (ax < 3.0) ? expLUT_[static_cast<int>(ax*1024)] : 0.0;
+ }
+
+ /**
+  * Compute the fitness distance between the given two fitness points
+  */
+ inline double PESA::fitnessDistance(const lti::dvector& a,
+                                            const lti::dvector& b)  {
+   double res = 1.0;
+   int i;
+   const int size = min(a.size(),sigmas_.size());
+   for (i=0;(res>0.0) && (i<size);++i) {
+     res *= PESA::exp2((a[i]-b[i])/sigmas_[i]);
+   }
+   return res;
+ }
+
+ struct  PESA::scanLess
+   : public std::binary_function<dvector,dvector,bool> {
+   bool operator()(const geneticEngine::individual& a,
+                   const geneticEngine::individual& b) const {
+     int i=a.fitness.lastIdx();
+     for (;i>=0;--i) {
+       if (a.fitness[i]<b.fitness[i]) {
+         return true;
+       } else if (b.fitness[i]<a.fitness[i]) {
+         return false;
+       }
+     }
+     // they are equal
+     return false;
+   }
+ };
+
+ void PESA::initBoundingBox(dmatrix& boundingBox) const {
+   const geneticEngine::parameters& par =geneticEngine::getParameters();
+   boundingBox.resize(2,par.fitnessSpaceDimensionality);
+   // the min initialized with max
+   boundingBox.getRow(0).fill(std::numeric_limits<double>::max());
+   // the max initialized with min
+   boundingBox.getRow(1).fill(-std::numeric_limits<double>::max());
+ }
 
 
-
-
-
- /*bool PESA::apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog)  {
-
-     const geneticEngine::parameters par=geneticEngine::getParameters() ;
-
-     std::cout<<"verifying Parameters in PESA: " <<  par.numOfIterations <<"\n";
-
-     const genetics* geneticTools = &par.getGeneticsObject();
-
-     if (isNull(geneticTools)) {
-       setStatusString("Not a valid genetics object set yet");
-       return false;
+ /*
+  * Update bounding box considering the given fitness space point
+  */
+ bool PESA::updateBoundingBox(const dvector& pnt,
+                                           dmatrix& boundingBox) const {
+   int i;
+   bool changed = false;
+   const int maxDim = min(boundingBox.columns(),pnt.size());
+   for (i=0;i<maxDim;++i) {
+     if (pnt.at(i) < boundingBox.at(0,i)) {
+       boundingBox.at(0,i)=pnt.at(i);
+       changed = true;
      }
 
+     if (pnt.at(i) > boundingBox.at(1,i)) {
+       boundingBox.at(1,i)=pnt.at(i);
+       changed = true;
+     }
+   }
 
-     const double initialMutationRate = (par.initialMutationRate < 0.0) ?
-       abs(par.initialMutationRate)/geneticTools->getChromosomeSize() :
-       par.initialMutationRate;
-
-     const double finalMutationRate = (par.finalMutationRate < 0.0) ?
-       abs(par.finalMutationRate)/geneticTools->getChromosomeSize() :
-       par.finalMutationRate;
-
-
-       // initial value for mutation rate
-       double mutationRate = initialMutationRate;
-
-       std::vector<paretoFront::individual> PI; // internal population
-       vector<ubyte> mtSuccess;    // success flags for multi-threading mode
+   return changed;
+ }
 
 
-       PE.clear();
+ void PESA::updateFitnessSpaceSubdivision() {
+   const geneticEngine::parameters& par = geneticEngine::getParameters();
+   // bbox_ is the bounding box with 2xfitSpcDim
+   sigmas_.resize(bbox_.columns(),0.0,AllocateOnly); // sigmas with fitness
+                                                   // space dimensionality
+   int i;
+   for (i=0;i<sigmas_.size();++i) {
+     sigmas_.at(i)=(bbox_.at(1,i)-bbox_.at(0,i))/(par.fitnessSpacePartition*6.0);
+   }
+ }
 
-       // if the user desires to watch the evolution progress
-       if (haveValidProgressObject()) {
-         getProgressObject().reset();
-         std::string str("Pareto Front Evaluation Test.\n");
-         str += "Evaluation class: ";
-         str += par.getGeneticsObject().name();
-         getProgressObject().setTitle(str);
-         getProgressObject().setMaxSteps(par.numOfIterations+2);
-       }
 
 
-       PE.reserve(par.internalPopulationSize+par.externalPopulationSize+1);
-
-       if (par.numberOfThreads > 1) {
-         //queueProcessor_.init();
-       }
-
-       int lastIter=0;
-
-       if (initFromLog) {
-         // read the whole log and use it as initialization
-         // Some output if desired
-
-         if (haveValidProgressObject()) {
-           getProgressObject().step("Initialization from log file.");
+ bool PESA::getDataFromLog(const std::string& logFile,
+                                  geneticEngine::parameters& params,
+                                  std::vector<geneticEngine::individual>& data,
+                                  dmatrix& boundingBox,
+                                  int& lastIter) const {
+   std::ifstream in(logFile.c_str());
+   lastIter=0;
+   if (in) {
+     lispStreamHandler lsh(in);
+     if (params.read(lsh)) {
+       data.clear();
+       initBoundingBox(boundingBox);
+       std::string str;
+       bool ok;
+       // read data one by one
+       while (lsh.tryBegin()) {
+         data.push_back(individual());
+         individual& indiv = data[data.size()-1];
+         ok = indiv.fitness.read(lsh);
+         updateBoundingBox(indiv.fitness,boundingBox);
+         ok = lsh.readDataSeparator() && ok;
+         ok = lsh.read(str) && ok;
+         geneticEngine::stringToChromosome(str,indiv.genotype);
+         ok = lsh.readEnd() && ok;
+         if (!ok ||
+             (static_cast<int>(indiv.fitness.size()) !=
+              params.fitnessSpaceDimensionality) ||
+             (static_cast<int>(indiv.genotype.size()) !=
+              params.getGeneticsObject().getChromosomeSize())) {
+           // wrong element.  Delete it
+           data.pop_back();
          }
-
-
-
        }
 
+       in.close(); // ensure the log is closed before the next step
+       lastIter = findLastIter(logFile);
+
+       return true;
+     }
+     setStatusString(lsh.getStatusString());
+   }
+   return false;
+ }
+
+ int PESA::findLastIter(const std::string& logFile) const {
+   static const std::string pattern(";; Iteration: ");
+
+   std::ifstream in(logFile.c_str()); // open the log for reading
+   std::string line,subline;
+   std::string::size_type pos;
+   int last=0;
+   int count=0;
+   if (in) { // if it exists
+     while(std::getline(in,line)) { // while file ok
+       if ((pos=line.find(pattern) != std::string::npos)) { // if log comment
+         ++count; // one additional iteration found
+         subline=line.substr(pos+pattern.length()-1);
+         std::istringstream strstm(subline);
+         int tmp;
+         strstm >> tmp; // get the iteration from the log
+         if (tmp > last) {
+           last = tmp;
+         }
+       }
+     }
+   }
+   return max(last-1,count-2); // last is 0-based, count isn't
+                               // very last iteration incomplete, so -1
+ }
+
+ void PESA::updateDensityFactors(std::vector<geneticEngine::individual>& PE) {
+   std::vector<geneticEngine::individual>::iterator it,jt;
+
+   // clear the squeeze factors
+   for (it=PE.begin();it!=PE.end();++it) {
+     (*it).squeezeFactor = 0.0;
+   }
+
+   double d;
+
+   for (it=PE.begin();it!=PE.end();++it) {
+     for (jt=it;jt!=PE.end();++jt) {
+       if (it != jt) {
+         d = fitnessDistance((*it).fitness,(*jt).fitness);
+         (*it).squeezeFactor += d;
+         (*jt).squeezeFactor += d;
+       }
+     }
+   }
+ }
 
 
-
-
-
-
-
-
-
-
-
-
-
-     return true;
-
-
-
- }*/
 
 
 
    // The PESA Algorithm
-   bool PESA::apply(std::vector<paretoFront::individual>& PE,const bool initFromLog) {
+   bool PESA::apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog) {
      //paretoFront* pf=geneticEngine::pf_;
-     std::cout<<"applying pesa! " <<pf_->getParameters().fitnessSpaceDimensionality <<"\n";
+    // std::cout<<"applying pesa 1! \n";
 
      const geneticEngine::parameters& par = geneticEngine::getParameters();
      const genetics* geneticTools = &par.getGeneticsObject();
 
-
-
-
      if (isNull(geneticTools)) {
-       pf_->setStatusString("Not a valid genetics object set yet");
+       setStatusString("Not a valid genetics object set yet");
        return false;
      }
      // set the shadow for the mutation rate
@@ -293,19 +410,22 @@ PESA::PESA() {
      // initial value for mutation rate
      double mutationRate = initialMutationRate;
 
-     std::vector<paretoFront::individual> PI; // internal population
+     std::vector<geneticEngine::individual> PI; // internal population
      vector<ubyte> mtSuccess;    // success flags for multi-threading mode
 
      PE.clear();
 
+     //std::cout<<"applying pesa 2! \n";
+
      // if the user desires to watch the evolution progress
-     if (pf_->haveValidProgressObject()) {
-       pf_->getProgressObject().reset();
+     if (haveValidProgressObject()) {
+       std::cout <<"valid progress Object \n";
+       getProgressObject().reset();
        std::string str("Pareto Front Evaluation Test.\n");
        str += "Evaluation class: ";
        str += par.getGeneticsObject().name();
-       pf_->getProgressObject().setTitle(str);
-       pf_->getProgressObject().setMaxSteps(par.numOfIterations+2);
+       getProgressObject().setTitle(str);
+       getProgressObject().setMaxSteps(par.numOfIterations+2);
      }
 
      // ensure that the PE and PI vectors will have all memory they need
@@ -313,7 +433,7 @@ PESA::PESA() {
 
 
      if (par.numberOfThreads > 1) {
-       pf_->queueProcessor_.init();
+        queueProcessor_.init();
      }
 
      int lastIter=0;
@@ -321,37 +441,37 @@ PESA::PESA() {
      if (initFromLog) {
        // read the whole log and use it as initialization
        // Some output if desired
-       if (pf_->haveValidProgressObject()) {
-         pf_->getProgressObject().step("Initialization from log file.");
+       if (haveValidProgressObject()) {
+         getProgressObject().step("Initialization from log file.");
        }
-       if (pf_->getDataFromLog(par.logFilename,pf_->getRWParameters(),PI,pf_->bbox_,lastIter)){
+       if (getDataFromLog(par.logFilename,getRWParameters(),PI,bbox_,lastIter)){
          // we need to re-adapt the parameters from the log file
          if (haveValidProgressObject()) {
-           pf_->getProgressObject().setMaxSteps(par.numOfIterations+2);
-           pf_->getProgressObject().setStep(lastIter);
+           getProgressObject().setMaxSteps(par.numOfIterations+2);
+           getProgressObject().setStep(lastIter);
          }
 
          // update the genetic tools used
          geneticTools = &par.getGeneticsObject();
 
          // well, we need to continue logging at the end of the file
-         if (notNull(pf_->logOut_)) {
-           pf_->logOut_->close();
-           delete pf_->logOut_;
-           pf_->logOut_=0;
+         if (notNull(logOut_)) {
+           logOut_->close();
+           delete logOut_;
+           logOut_=0;
          }
          if (par.logFront) {
            // append at the end of the file!
-           pf_->logOut_ = new std::ofstream(par.logFilename.c_str(),
+           logOut_ = new std::ofstream(par.logFilename.c_str(),
                                        std::ios_base::app);
-           pf_->olsh_.use(*pf_->logOut_);
-           pf_->logFront_ = false; // avoid rewriting the initialization
+           olsh_.use(*logOut_);
+           logFront_ = false; // avoid rewriting the initialization
          }
        } else {
-         if (pf_->haveValidProgressObject()) {
+         if (haveValidProgressObject()) {
            std::string msg = "Problems reading log file (";
-           msg += pf_->getStatusString() + "). Aborting";
-           pf_->getProgressObject().step(msg);
+           msg += getStatusString() + "). Aborting";
+           getProgressObject().step(msg);
          }
          return false;
        }
@@ -359,15 +479,15 @@ PESA::PESA() {
        // If there are not enough individuals in the internal population
        // create a few more.
        if (static_cast<int>(PI.size()) < par.internalPopulationSize) {
-         std::vector<paretoFront::individual> tmpPI;
+         std::vector<geneticEngine::individual> tmpPI;
          tmpPI.reserve(par.internalPopulationSize);
 
          // Initialization of internal population: create random individuals
-         if (!pf_->initInternalPopulation(tmpPI)) {
+         if (!initInternalPopulation(tmpPI)) {
 
            // Some output if desired
-           if (pf_->haveValidProgressObject()) {
-             pf_->getProgressObject().step("Initialization failed.");
+           if (haveValidProgressObject()) {
+             getProgressObject().step("Initialization failed.");
            }
            return false;
          }
@@ -383,19 +503,21 @@ PESA::PESA() {
      else {
        // normal initialization
 
+       std::cout<<"applying pesa 3! \n";
+
        PI.reserve(par.internalPopulationSize);
 
        // Some output if desired
-       if (pf_->haveValidProgressObject()) {
-         pf_->getProgressObject().step("Initialization.");
+       if (haveValidProgressObject()) {
+         getProgressObject().step("Initialization.");
        }
 
        // Initialization of internal population.
-       if (!pf_->initInternalPopulation(PI)) {
+       if (!initInternalPopulation(PI)) {
 
          // Some output if desired
-         if (pf_->haveValidProgressObject()) {
-           pf_->getProgressObject().step("Intialization failed.");
+         if (haveValidProgressObject()) {
+           getProgressObject().step("Intialization failed.");
          }
          return false;
        }
@@ -415,15 +537,15 @@ PESA::PESA() {
      timer chrono(timer::Wall); // timer used to estimate remaining time
      double startTime(0.0);
      int startIteration(0);
+     std::cout<<"applying pesa 4! \n";
 
-     if (pf_->haveValidProgressObject()) {
+     if (haveValidProgressObject()) {
        chrono.start();
        startTime=chrono.getTime();
-       startIteration=pf_->getProgressObject().getStep();
+       startIteration=getProgressObject().getStep();
      }
 
      do {
-
        // Evaluate Internal Population (PI)
        updateSqueezeFactors = false;
        premortum = 0;
@@ -441,17 +563,19 @@ PESA::PESA() {
            for (unsigned int i=0;i<PI.size();++i) {
              // for each individual in the internal pop.
 
-             if (pf_->haveValidProgressObject(1)) {
+             if (haveValidProgressObject(1)) {
                std::ostringstream oss;
                oss << "Internal evaluation " << i+1 << "/" << PI.size();
-               pf_->getProgressObject().substep(1,oss.str());
+               getProgressObject().substep(1,oss.str());
              }
+
+             //std::cout<<"applying pesa 5! \n";
 
              // normal algorithm
              if(geneticTools->evaluateChromosome(PI[i].genotype,
                                                  PI[i].fitness,
  						PI[i].genotype)) {
-               updateSqueezeFactors = (pf_->updateBoundingBox(PI[i].fitness,pf_->bbox_) ||
+               updateSqueezeFactors = (updateBoundingBox(PI[i].fitness,bbox_) ||
                                        updateSqueezeFactors);
              } else {
                // evaluation failed, but we need some dummy fitness:
@@ -460,11 +584,11 @@ PESA::PESA() {
                premortum++;
              }
 
-             if (pf_->haveValidProgressObject(2)) {
+             if (haveValidProgressObject(2)) {
                // if the user wants, show the fitness vector
                std::ostringstream oss;
                oss << "Fitness: " << PI[i].fitness;
-               pf_->getProgressObject().substep(2,oss.str());
+               getProgressObject().substep(2,oss.str());
              }
            }
          } else {
@@ -472,10 +596,10 @@ PESA::PESA() {
            // Multiple thread processing is done through a queue
            // --------------------------------------------------
 
-           pf_->queueProcessor_.evaluate(PI,mtSuccess,*geneticTools);
+           queueProcessor_.evaluate(PI,mtSuccess,*geneticTools);
            for (int i=0;i<mtSuccess.size();++i) {
              if (mtSuccess.at(i) != 0) {
-               updateSqueezeFactors = (pf_->updateBoundingBox(PI[i].fitness,pf_->bbox_) ||
+               updateSqueezeFactors = (updateBoundingBox(PI[i].fitness,bbox_) ||
                                        updateSqueezeFactors);
              } else {
                premortum++;
@@ -483,14 +607,13 @@ PESA::PESA() {
            }
          }
        }
-
        if (premortum >= PI.size()) {
-         pf_->appendStatusString("\nAll evaluations in one iteration failed.");
+         appendStatusString("\nAll evaluations in one iteration failed.");
 
-         if (pf_->haveValidProgressObject()) {
-           pf_->getProgressObject().step("Error: All evalutations in one iteration" \
+         if (haveValidProgressObject()) {
+           getProgressObject().step("Error: All evalutations in one iteration" \
                                     " failed. Aborting.");
-           pf_->getProgressObject().step(geneticTools->getStatusString());
+           getProgressObject().step(geneticTools->getStatusString());
          }
 
          return false;
@@ -500,19 +623,19 @@ PESA::PESA() {
        if (updateSqueezeFactors) {
          _lti_debug2("Updating Squeeze Factors"<<std::endl);
 
-         pf_->updateFitnessSpaceSubdivision();
-         pf_->updateDensityFactors(PE);
+         updateFitnessSpaceSubdivision();
+         updateDensityFactors(PE);
 
-         _lti_debug3("Bounding box:\n" << pf_->bbox_ << std::endl);
-         _lti_debug3("New sigmas:\n" << pf_->sigmas_ << std::endl);
+         _lti_debug3("Bounding box:\n" << bbox_ << std::endl);
+         _lti_debug3("New sigmas:\n" << sigmas_ << std::endl);
        }
 
        // Add non-dominated members from PI to PE
-       inserted = pf_->insert(PI,PE);
+       inserted = insert(PI,PE);
        extPop = PE.size();
 
        // Some output if desired
-       if (pf_->haveValidProgressObject()) {
+       if (haveValidProgressObject()) {
          std::ostringstream oss;
 
          oss << "Front size: " << extPop
@@ -522,12 +645,12 @@ PESA::PESA() {
          // first, compute the elapsed time since the first iteration in secs
          double t  = (chrono.getTime()-startTime)/1000000.0;
 
-         const int currentStep = pf_->getProgressObject().getStep();
+         const int currentStep = getProgressObject().getStep();
 
          if (currentStep > startIteration) {
 
            // estimated remaining time in seconds
-           t *= (double(pf_->getProgressObject().getMaxSteps() - currentStep - 1)/
+           t *= (double(getProgressObject().getMaxSteps() - currentStep - 1)/
                  double(currentStep - startIteration));
 
            const int days  = static_cast<int>(t/(60*60*24));
@@ -553,7 +676,7 @@ PESA::PESA() {
            }
          }
 
-         pf_->getProgressObject().step(oss.str());
+         getProgressObject().step(oss.str());
        }
 
        // Log which iteration has been currently logged
@@ -563,20 +686,20 @@ PESA::PESA() {
              << "  New individuals: " << inserted;
          oss << " (MR: " <<
            mutationRate*geneticTools->getChromosomeSize() << " bits)";
-         (*pf_->logOut_) << oss.str() << std::endl;
+         (*logOut_) << oss.str() << std::endl;
        }
 
        // end of analysis?
        if ((++iter >= par.numOfIterations) ||
-           (pf_->haveValidProgressObject() &&
-            pf_->getProgressObject().breakRequested())) {
+           (haveValidProgressObject() &&
+            getProgressObject().breakRequested())) {
 
          // Some output if desired
-         if (pf_->haveValidProgressObject()) {
+         if (haveValidProgressObject()) {
            if (iter >= par.numOfIterations) {
-             pf_->getProgressObject().step("Ready.");
+             getProgressObject().step("Ready.");
            } else {
-             pf_->getProgressObject().step("Stopped by the user.");
+             getProgressObject().step("Stopped by the user.");
            }
          }
          break;
@@ -589,8 +712,10 @@ PESA::PESA() {
            PI.resize(par.internalPopulationSize);
          }
          initFirstFromLog = false;
-         pf_->logFront_ = par.logFront; // log if desired
+         logFront_ = par.logFront; // log if desired
        }
+
+
 
        // the evaluation of algorithm could set the random number generator in
        // a deterministic state.
@@ -603,12 +728,12 @@ PESA::PESA() {
        int j;
        j=0;
        while (j<par.internalPopulationSize) {
-         const int a = pf_->binaryTournament(PE);
-         if ((extPop >= 2) && ( pf_->rnd_.rand() < par.crossoverProbability)) {
+         const int a = binaryTournament(PE);
+         if ((extPop >= 2) && ( rnd_.rand() < par.crossoverProbability)) {
            // crossover
-           int b = pf_->binaryTournament(PE);
+           int b = binaryTournament(PE);
            while (a == b) { // ups! two identical individuals, get another one.
-             b = min(static_cast<int>( pf_->rnd_.rand()*extPop),extPop-1);
+             b = min(static_cast<int>( rnd_.rand()*extPop),extPop-1);
            }
            _lti_debug3("Crossover squeeze factors: " <<
                        PE[a].squeezeFactor << "," <<
@@ -632,12 +757,211 @@ PESA::PESA() {
 
      } while (true);
 
-     if (pf_->logFront_) {
-       if (notNull(pf_->logOut_)) {
-         pf_->logOut_->close();
-         delete pf_->logOut_;
-         pf_->logOut_ = 0;
+
+     if (logFront_) {
+       if (notNull(logOut_)) {
+         //std::cout <<"log out no es nulo \n";
+        // logOut_->close();
+        // delete logOut_;
+        // logOut_ = 0;
        }
+     }
+
+     return true;
+   }
+
+   void PESA::initAlg(dmatrix& pbbox_,dvector& psigmas_ ,univariateContinuousDistribution& prnd_,
+      bool& plogEvaluations_, bool& plogFront_ , lispStreamHandler& polsh_,std::ofstream* plogOut_,
+        std::list<geneticEngine::individual>& pdeadIndividuals_,
+         const double* pexpLUT_ ){
+        bbox_=pbbox_;
+        sigmas_=psigmas_;
+        rnd_=prnd_;
+        logEvaluations_=plogEvaluations_;
+        logFront_=plogFront_;
+        olsh_=polsh_;
+        logOut_=plogOut_;
+        deadIndividuals_=pdeadIndividuals_;
+        expLUT_=pexpLUT_;
+      }
+
+   // random initialization
+   bool PESA::initInternalPopulation(std::vector<geneticEngine::individual>& data) {
+     const geneticEngine::parameters& par = geneticEngine::getParameters();
+     data.resize(par.internalPopulationSize);
+
+     unsigned int i,abort;
+     // if no valid individual can be generated after abortThreshold tries,
+     // there is something wrong
+     static const unsigned int abortThreshold = 1000000;
+
+     i=0;
+     abort=0;
+     while ((abort<abortThreshold) && (i<data.size())) {
+       // for each individual
+
+       // for each bit
+       if (par.getGeneticsObject().initIndividual(i,data[i].genotype)) {
+         // only accept valid chromosomes in the initial population
+         i++;
+         abort = 0;
+       }
+       else {
+         abort++;
+       }
+     }
+
+     if (abort >= abortThreshold) {
+       setStatusString("Too many errors generating an individual.  Aborting.");
+       return false;
+     }
+
+     return true;
+   }
+
+   bool PESA::dominate(const dvector& a,
+                              const dvector& b) const {
+     bool theOne = false;
+
+     // a little pointer arithmetic to accelerate this frequently called
+     // function
+     dvector::const_iterator aPtr = a.begin();
+     dvector::const_iterator bPtr = b.begin();
+     const dvector::const_iterator ePtr = a.end();
+
+     while (aPtr != ePtr) {
+       if ((*aPtr) < (*bPtr)) {
+         // if any elemenCt is smaller => definitively not greater!
+         return false;
+       } else if ((*aPtr) > (*bPtr)) {
+         // only greater if at least one element has been strictly greater
+         theOne = true;
+       }
+
+       ++aPtr;
+       ++bPtr;
+     }
+
+     return theOne;
+   }
+
+
+   // binary tournament
+   int PESA::binaryTournament(const std::vector<geneticEngine::individual>& PE) const {
+     const int size = PE.size();
+
+     if (size <= 1) {
+       return 0;
+     } else if (size <= 2) {
+       if (PE[0].squeezeFactor < PE[1].squeezeFactor) {
+         return 0;
+       } else if (PE[0].squeezeFactor > PE[1].squeezeFactor) {
+         return 1;
+       } else {
+         return (rnd_.rand() < 0.5) ? 0 : 1;
+       }
+     }
+
+     // chose two random individuals
+     int a = min(static_cast<int>(size*rnd_.rand() ),size-1);
+     int b = min(static_cast<int>(size*rnd_.rand()  ),size-1);
+     while (b == a) {
+       b = min(static_cast<int>(size*rnd_.rand()   ),size-1);
+     }
+
+     if (PE[a].squeezeFactor < PE[b].squeezeFactor) {
+       return a;
+     } else if (PE[a].squeezeFactor > PE[b].squeezeFactor) {
+       return b;
+     } else {
+       return (rnd_.rand() < 0.5) ? a : b;
+     }
+   }
+
+   // insert one individual into the external population
+   bool PESA::insert(geneticEngine::individual& genotype,
+                            std::vector<geneticEngine::individual>& PE) {
+
+     std::list<int> removal;
+     int freePlaces = 0;
+     unsigned int j,i;
+     double dist;
+     genotype.squeezeFactor = 0.0;
+
+     // Check which individuals in PE are dominated by the genotype,
+     // and mark them for removal
+     for (j=0;j<PE.size();++j) {
+       if (dominate(genotype.fitness,PE[j].fitness)) {
+         // the j element in PE needs to be removed.
+         removal.push_back(j);
+         if (logEvaluations_) {
+           deadIndividuals_.push_back(PE[j]);
+         }
+
+         if (haveValidProgressObject(3)) {
+           // if the user wants, show the recently dead individuals
+           std::ostringstream oss;
+           oss << "RDIn: " << PE[j].fitness;
+           getProgressObject().substep(3,oss.str());
+         }
+
+         // for each removed item (j) we need to update the density
+         // influences it caused on the other Pareto members:
+         for (i=0;i<PE.size();++i) {
+           PE[i].squeezeFactor -= fitnessDistance(PE[i].fitness,PE[j].fitness);
+         }
+
+         ++freePlaces;
+       } else {
+         // element j survives.  We can already compute its influence on the
+         // new element
+         dist = fitnessDistance(PE[j].fitness,genotype.fitness);
+         genotype.squeezeFactor += dist;
+         PE[j].squeezeFactor += dist;
+       }
+     }
+
+
+     // Recycle as much removal places as possible, we can assume that
+     // the elements in "removal" are sorted.
+     if (freePlaces > 0) {
+       std::list<int>::iterator it = removal.begin();
+       PE[*it] = genotype;
+       freePlaces--;
+       ++it;
+
+       // all incomers at place, now we need to really remove the rest
+       // elements.
+       int lastElem = PE.size()-1;
+       std::list<int>::reverse_iterator rit;
+       rit=removal.rbegin();
+
+       int newVctSize = PE.size()-freePlaces;
+
+       // shift all unused places to the end of the vector
+       while (freePlaces > 0) {
+         // get last used value in PE
+         if ((*rit) < lastElem) {
+           // swap the values (well, just half swap, since one element will be
+           //                  removed anyway)
+           PE[*it]=PE[lastElem];
+           lastElem--;
+           it++;
+         } else {
+           // element already at a position that will be removed
+           lastElem--;
+           rit++;
+         }
+         freePlaces--;
+       }
+
+       // resize the vector, removing the last elements (std::vector keeps the
+       // rest).
+       PE.resize(newVctSize);
+
+     } else {
+       // no place left on PE, we just append it
+       PE.push_back(genotype);
      }
 
      return true;
@@ -645,167 +969,136 @@ PESA::PESA() {
 
 
 
-/*
-bool PESA::apply(std::vector<lti::paretoFront::individual>& PE,const bool initFromLog,
-  lti::paretoFront& pParetoF ){
+     bool PESA::logEntry(const geneticEngine::individual& ind,const bool markDead) {
+       if (logFront_) {
+         std::string str;
+         // save new incomer in the log if so desired
+         olsh_.writeBegin();
+         ind.fitness.write(olsh_);
+         olsh_.writeDataSeparator();
+         chromosomeToString(ind.genotype,str);
+         olsh_.write(str);
+         olsh_.writeEnd();
+         if (markDead) {
+           (*logOut_) << " ;; x" ;
+         }
+         (*logOut_) << std::endl; // force EOL
 
-  const lti::paretoFront::parameters& par = pParetoF.getParameters();
+         logOut_->flush();                   // force to write the file
+         return true;
+       }
+       return false;
+     }
 
+     int PESA::insert(std::vector<geneticEngine::individual>& PI,
+                             std::vector<geneticEngine::individual>& PE) {
 
-  const lti::genetics* geneticTools = &par.getGeneticsObject();
+       const unsigned int extPopSize =
+         static_cast<unsigned int>(geneticEngine::getParameters().externalPopulationSize);
 
+       // Check which elements of PI are, within PI, non-dominated.
+       std::vector<bool> nonDominated(PI.size(),true);
+       bool dominated;
+       unsigned int i,j;
+       int toInsert = PI.size();
+       for (i=0;i<PI.size();++i) {
+         dominated = false;
+         for (j=0;!dominated && (j<PI.size());++j) {
+           dominated = dominate(PI[j].fitness,PI[i].fitness);
+         }
+         nonDominated[i]=!dominated;
+         if (dominated) {
+           --toInsert;
+           if (logEvaluations_) {
+             logEntry(PI[i],true);
+             deadIndividuals_.push_back(PI[i]);
+           }
+         }
+       }
 
-  if (isNull(geneticTools)) {
-    pParetoF.setStatusString("Not a valid genetics object set yet");
-    std::cout << "Genetic Tools null  \n" ;
+       // Only the non-Dominated points in PI need to be checked in PE
+       // Check if any element of PI is non-dominated from the elements in PE
+       for (i=0;i<PI.size();++i) {
+         if (nonDominated[i]) {
+           dominated = false;
 
-    return false;
-  }
+           for (j=0;!dominated && (j<PE.size());++j) {
+             dominated = (dominate(PE[j].fitness,PI[i].fitness));
+           }
+           nonDominated[i]=!dominated;
+           if (dominated) {
+             --toInsert;
+             if (logEvaluations_) {
+               logEntry(PI[i],true);
+               deadIndividuals_.push_back(PI[i]);
+             }
+           }
+         }
+       }
 
-  std::cout << "Applying PESA!  \n" ;
+       if (toInsert == 0) {
+         // nothing to be done:
+         // all new individuals were dominated by someone else
+         return toInsert;
+       }
 
-  const double initialMutationRate = (par.initialMutationRate < 0.0) ?
-    lti::abs(par.initialMutationRate)/geneticTools->getChromosomeSize() :
-    par.initialMutationRate;
+       // the points at PI with (nonDominated == true) belong definitively in PE
+       for (i=0;i<PI.size();++i) {
+         if (nonDominated[i]) {
+           // save new incomer in the log if so desired
+           logEntry(PI[i]);
+           insert(PI[i],PE);
 
-  const double finalMutationRate = (par.finalMutationRate < 0.0) ?
-    lti::abs(par.finalMutationRate)/geneticTools->getChromosomeSize() :
-    par.finalMutationRate;
+           if (haveValidProgressObject(3)) {
+             // if the user wants, show the new individuals
+             std::ostringstream oss;
+             oss << "NNDC: " << PI[i].fitness;
+             getProgressObject().substep(3,oss.str());
+           }
+         }
+       }
 
-    double mutationRate = initialMutationRate;
+       // Now we need to check if the number of elements in the pareto front
+       // is too high, and in that case we need to remove the elements with
+       // the highest squeeze factors.
+       if (PE.size() > extPopSize) {
+         // it is indeed too big, check how many elements we need to remove
 
-    std::vector<lti::paretoFront::individual> PI; // internal population
-    std::vector<lti::ubyte> mtSuccess;    // success flags for multi-threading mode
-    PE.clear();
+         // partially sort the elements
+         std::nth_element(PE.begin(),PE.begin()+extPopSize,PE.end());
 
-    // if the user desires to watch the evolution progress
-    if ( pParetoF.haveValidProgressObject()   ) {   //Check herency
-       pParetoF.getProgressObject().reset();
-      std::string str("Pareto Front Evaluation Test.\n");
-      str += "Evaluation class: ";
-      str += par.getGeneticsObject().name();
-       pParetoF.getProgressObject().setTitle(str);
-       pParetoF.getProgressObject().setMaxSteps(par.numOfIterations+2);
-    }
+         // The elements to be removed are now at the end.
+         // update the distances for the elements that are going to be removed.
 
-    PE.reserve(par.internalPopulationSize+par.externalPopulationSize+1);
+         // for each removed item (j) we need to update the density
+         // influences it caused on the other Pareto members:
+         for (j=extPopSize;j<PE.size();++j) {
+           _lti_debug3("Removing element with squeeze factor " <<
+                       PE[j].squeezeFactor << std::endl);
 
-    lti::paretoFront::queueProcessing queueProcessor_(pParetoF);
+           if (haveValidProgressObject(3)) {
+             // if the user wants, show the recently dead individuals
+             std::ostringstream oss;
+             oss << "HDRI: " << PE[j].fitness;
+             getProgressObject().substep(3,oss.str());
+           }
 
-    if (par.numberOfThreads > 1) {
-      queueProcessor_.init();
-    }
+           for (i=0;i<extPopSize;++i) {
+             PE[i].squeezeFactor -= fitnessDistance(PE[i].fitness,PE[j].fitness);
+           }
+         }
 
-    int lastIter=0;
+         // remove the elements
+         PE.resize(extPopSize);
 
-    if (initFromLog) {
-      // read the whole log and use it as initialization
-      // Some output if desired
-      if ( pParetoF.haveValidProgressObject()  ) {
-         pParetoF.getProgressObject().step("Initialization from log file.");
-      }
+       }
 
-      if (pParetoF.getDataFromLog(par.logFilename,pParetoF.getRWParameters(),PI,pParetoF.bbox_,lastIter)){
-        // we need to re-adapt the parameters from the log file
-        if (pParetoF.haveValidProgressObject()) {
-          pParetoF.getProgressObject().setMaxSteps(par.numOfIterations+2);
-          pParetoF.getProgressObject().setStep(lastIter);
-        }
-
-        // update the genetic tools used
-        geneticTools = &par.getGeneticsObject();
-
-        // well, we need to continue logging at the end of the file
-        if (lti::notNull(pParetoF.logOut_)) {
-          pParetoF.logOut_->close();
-          delete pParetoF.logOut_;
-          pParetoF.logOut_=0;
-        }
-        if (par.logFront) {
-          // append at the end of the file!
-          pParetoF.logOut_ = new std::ofstream(par.logFilename.c_str(),
-                                      std::ios_base::app);
-          pParetoF.olsh_.use(*pParetoF.logOut_);
-          pParetoF.logFront_ = false; // avoid rewriting the initialization
-        }
-
-
-      }else {
-        if (pParetoF.haveValidProgressObject()) {
-          std::string msg = "Problems reading log file (";
-          msg += pParetoF.getStatusString() + "). Aborting";
-          pParetoF.getProgressObject().step(msg);
-        }
-        return false;
-      }
-      // If there are not enough individuals in the internal population
-      // create a few more.
-      if (static_cast<int>(PI.size()) < par.internalPopulationSize) {
-        std::vector<lti::paretoFront::individual> tmpPI;
-        tmpPI.reserve(par.internalPopulationSize);
-
-        // Initialization of internal population: create random individuals
-        if (!pParetoF.initInternalPopulation(tmpPI)) {
-
-          // Some output if desired
-          if (pParetoF.haveValidProgressObject()) {
-            pParetoF.getProgressObject().step("Initialization failed.");
-          }
-          return false;
-        }
-
-        // copy all new generated elements
-        int i;
-        for (i=PI.size();i<par.internalPopulationSize;++i) {
-          PI.push_back(tmpPI[i]);
-        }
-
-      }
-    }  // end of init from log
-
-    else {
-      // normal initialization
-
-      PI.reserve(par.internalPopulationSize);
-
-      // Some output if desired
-      if (pParetoF.haveValidProgressObject()) {
-        pParetoF.getProgressObject().step("Initialization.");
-      }
-
-      // Initialization of internal population.
-      if (!pParetoF.initInternalPopulation(PI)) {
-
-        // Some output if desired
-        if (pParetoF.haveValidProgressObject()) {
-          pParetoF.getProgressObject().step("Intialization failed.");
-        }
-        return false;
-      }
-    }
-
-    // -----------------------------------------------------------------
-    //                            LET'S EVOLVE!
-    // -----------------------------------------------------------------
-
-    int extPop = 0; // number of individuals in the external population
-    int iter = lastIter;
-    int inserted;
-    bool updateSqueezeFactors;
-    bool initFirstFromLog = initFromLog;
-    unsigned int premortum;
-
-    lti::timer chrono(lti::timer::Wall); // timer used to estimate remaining time
-    double startTime(0.0);
-    int startIteration(0);
-
-    std::cout<< "returning true";
+       return toInsert;
+     }
 
 
 
 
 
-  return true;
-}*/
 
 }

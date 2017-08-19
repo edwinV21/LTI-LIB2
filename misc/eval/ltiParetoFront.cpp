@@ -430,15 +430,13 @@ namespace lti {
         std::vector<individual> PE;
         parameters& parRW = getRWParameters();
         genetics* geneticTools = &parRW.getGeneticsObject();
-
         engine_->getRWParameters().setGeneticsObject(geneticTools);
+        //engine_->setProgressObject(getProgressObject);
         //bool a=engine_->getParameters().setGeneticsObject( geneticTools  );
         std::cout<<"verifying LogFront parameters GE: " <<  engine_->getParameters().getGeneticsObject().name() <<"\n";
         std::cout<<"verifying LogFront parameters PF: " <<  par.getGeneticsObject().name() <<"\n";
-        engine_->setParetoFront(this);
+        //engine_->setParetoFront(this);
         //engine_->apply(PE,true);
-
-
 
 
 
@@ -446,6 +444,7 @@ namespace lti {
       if (engine_->getParameters().numberOfThreads>1) {
         queueProcessor_.setNumberOfThreads(engine_->getParameters().numberOfThreads);
       }
+
       return true;
     }
     return false;
@@ -468,8 +467,8 @@ namespace lti {
   // privat class used to sort the vectors in scanning order
   struct  paretoFront::scanLess
     : public std::binary_function<dvector,dvector,bool> {
-    bool operator()(const paretoFront::individual& a,
-                    const paretoFront::individual& b) const {
+    bool operator()(const geneticEngine::individual& a,
+                    const geneticEngine::individual& b) const {
       int i=a.fitness.lastIdx();
       for (;i>=0;--i) {
         if (a.fitness[i]<b.fitness[i]) {
@@ -497,7 +496,12 @@ namespace lti {
       return false;
     }
 
-    std::vector<individual> PE;  // The external population
+    std::vector<geneticEngine::individual> PE;  // The external population
+
+    engine_->initAlg(bbox_,sigmas_ ,rnd_,logEvaluations_, logFront_ , olsh_, logOut_ ,deadIndividuals_,
+     expLUT_);
+
+    engine_->setProgressObject(static_cast<progressInfo&>(getProgressObject() ));
 
 
     if (engine_->apply(PE,0)) {
@@ -505,14 +509,17 @@ namespace lti {
       // convert the PE vector inpadetto the standard output expected by the user
       front.resize(PE.size(),par.fitnessSpaceDimensionality);
 
+
       std::vector<functor::parameters*>
         phenotypes(PE.size(),
                    static_cast<functor::parameters*>(0));
 
       // sort the result if desired.
+
       if (par.sortResult) {
         std::sort(PE.begin(),PE.end(),scanLess());
       }
+
 
       _lti_debug("Pareto Front:\n");
       unsigned int i;
@@ -526,11 +533,15 @@ namespace lti {
                    PE[i].squeezeFactor << "\n");
       }
 
+
+
       if (par.createFrontFile) {
         bool b = createFrontFile(par.frontFile,front,phenotypes);
         trash(phenotypes);
+
         return b;
       }
+
       _lti_debug("----------THE END-----------" << std::endl);
       return true;
     }
@@ -558,7 +569,12 @@ namespace lti {
     //  - fitness (dvector)
     //  - genotype (chromosome -> std::vector<bool>)
     //  - squeezeFactor (double)
-    std::vector<individual> PE;
+    std::vector<geneticEngine::individual> PE;
+
+    engine_->initAlg(bbox_,sigmas_ ,rnd_,logEvaluations_, logFront_ , olsh_, logOut_,deadIndividuals_,expLUT_   );
+
+    engine_->setProgressObject(static_cast<progressInfo&>(getProgressObject()) );
+    std::cout << "veriffff in apply 2 \n";
 
     if (engine_->apply(PE,0)) {
 
@@ -601,7 +617,10 @@ namespace lti {
     deadIndividuals_.clear();
     initBoundingBox(bbox_);
 
-    std::vector<individual> PE;
+    std::vector<geneticEngine::individual> PE;
+    engine_->initAlg(bbox_,sigmas_ ,rnd_,logEvaluations_, logFront_ , olsh_, logOut_,deadIndividuals_,expLUT_  );
+    engine_->setProgressObject(static_cast<progressInfo&>(getProgressObject()) );
+
 
     if (engine_->apply(PE,true)) { // "true" means initFromLog
 
@@ -640,7 +659,10 @@ namespace lti {
     deadIndividuals_.clear();
     initBoundingBox(bbox_);
 
-    std::vector<individual> PE;
+    std::vector<geneticEngine::individual> PE;
+
+    engine_->initAlg(bbox_,sigmas_ ,rnd_,logEvaluations_, logFront_ , olsh_, logOut_,deadIndividuals_,expLUT_   );
+    engine_->setProgressObject(static_cast<progressInfo&>(getProgressObject()) );
 
     if (engine_->apply(PE,true)) { // "true" means initFromLog
 
@@ -779,8 +801,8 @@ namespace lti {
     return theOne;
   }
 
-  // The PESA Algorithm
-  bool paretoFront::pesa(std::vector<individual>& PE,const bool initFromLog) {
+
+/*  bool paretoFront::pesa(std::vector<individual>& PE,const bool initFromLog) {
 
   //  std::cout<<"applying pesa! \n";
 
@@ -1154,7 +1176,7 @@ namespace lti {
     }
 
     return true;
-  }
+  }*/
 
   // binary tournament
   int paretoFront::binaryTournament(const std::vector<individual>& PE) const {
@@ -1550,7 +1572,7 @@ namespace lti {
     initBoundingBox(dummyBbox);
     trash(phenotypes);
 
-    std::vector<individual> PE;
+    std::vector<geneticEngine::individual> PE;
     if (getDataFromLog(logFile,getRWParameters(),PE,dummyBbox,lastIter)) {
       const geneticEngine::parameters& par = engine_->getParameters();
 

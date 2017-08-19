@@ -49,10 +49,11 @@
 #include "ltiThread.h"
 #include "ltiMutex.h"
 #include "ltiSemaphore.h"
-//#include "ltiGeneticEngine.h"
+#include "ltiGeneticEngine.h"
 
 namespace lti {
-  class geneticEngine;
+
+
 
 
   /**
@@ -760,15 +761,16 @@ namespace lti {
      */
     parameters& getRWParameters();
 
+    typedef geneticEngine::individual individual;
     /**
      * Structure characterizing an individual
      */
-    class individual {
-    public:
+  //  class individual {
+//    public:
       /**
        * Constructor
        */
-      individual() : fitness(),genotype(),squeezeFactor(0.0) {}
+  //    individual() : fitness(),genotype(),squeezeFactor(0.0) {}
 
       /**
        * An individual is here "smaller" than another one if
@@ -776,14 +778,14 @@ namespace lti {
        * the individuals after their squeeze factors, which simplifies
        * getting the smallest or greatest elements.
        */
-      inline bool operator<(const individual& other) const {
-        return (squeezeFactor < other.squeezeFactor);
-      }
+//      inline bool operator<(const individual& other) const {
+//        return (squeezeFactor < other.squeezeFactor);
+//      }
 
       /**
        * Fitness of the individual
        */
-      dvector fitness;
+  //    dvector fitness;
 
       /**
        * Chromosome.
@@ -791,15 +793,15 @@ namespace lti {
        * You can get the phenotype anytime with cromosomeToPhenotype
        * methods in the corresponding lti::genetics class.
        */
-      chromosome genotype;
+    //  chromosome genotype;
 
       /**
        * Factor computed to determine which candidates should be taken
        * for mutation or crossover.  Dense locations in the fitness space
        * get a high squeeze factor.
        */
-      double squeezeFactor;
-    };
+  //    double squeezeFactor;
+  //  };
 
     /**
      * Initialize the internal population.
@@ -825,7 +827,7 @@ namespace lti {
      * Computes the Pareto front, which will be return as list of individuals
      * in PE.
      */
-    bool pesa(std::vector<individual>& PE,const bool initFromLog=false);
+    //bool pesa(std::vector<individual>& PE,const bool initFromLog=false);
 
     /**
      * Insert non-dominated member from PI to PE
