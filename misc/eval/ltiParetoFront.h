@@ -310,7 +310,7 @@ namespace lti {
        *
        * Default value: 10
        */
-      int internalPopulationSize;
+      //int internalPopulationSize;
 
       /**
        * Dimensionality of the space analyzed by the Pareto Front.
@@ -323,7 +323,7 @@ namespace lti {
        *
        * Default value: 2
        */
-      int fitnessSpaceDimensionality;
+    //  int fitnessSpaceDimensionality;
 
       /**
        * Number of iterations.
@@ -725,10 +725,10 @@ namespace lti {
      * The parameters of the current functor will change without invalidating
      * the reference.  Therefore this method is not constant.
      */
-    bool getDataFromLog(const std::string& logFile,
+  /*  bool getDataFromLog(const std::string& logFile,
                         matrix<double>& front,
                         std::vector<functor::parameters*>& phenotypes,
-                        int& lastIter);
+                        int& lastIter);*/
     //@}
 
 
@@ -1007,11 +1007,11 @@ namespace lti {
      * @param boundingBox bounding box of the data
      * @return true if successful.
      */
-    bool getDataFromLog(const std::string& logFile,
+  /*  bool getDataFromLog(const std::string& logFile,
                         parameters& params,
                         std::vector<individual>& data,
                         dmatrix& boundingBox,
-                        int& lastIter) const;
+                        int& lastIter) const;*/
 
     /**
      * The log-file has in the comments the iteration number.  We can

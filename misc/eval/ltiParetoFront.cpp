@@ -64,8 +64,8 @@ namespace lti {
   paretoFront::parameters::parameters()
     : functor::parameters() {
 
-    internalPopulationSize = int(10);
-    fitnessSpaceDimensionality = int(2);
+  //  internalPopulationSize = int(10);
+    //fitnessSpaceDimensionality = int(2);
 
     geneticsObject_=0;
 
@@ -100,8 +100,8 @@ namespace lti {
   paretoFront::parameters::copy(const parameters& other) {
     functor::parameters::copy(other);
 
-    internalPopulationSize     = other.internalPopulationSize;
-    fitnessSpaceDimensionality = other.fitnessSpaceDimensionality;
+  //  internalPopulationSize     = other.internalPopulationSize;
+    //fitnessSpaceDimensionality = other.fitnessSpaceDimensionality;
     engineName                 = other.engineName;
     engineParamFile            = other.engineParamFile;
 
@@ -151,9 +151,9 @@ namespace lti {
 
     if (b) {
 
-      lti::write(handler,"internalPopulationSize",internalPopulationSize);
-      lti::write(handler,"fitnessSpaceDimensionality",
-                         fitnessSpaceDimensionality);
+    //  lti::write(handler,"internalPopulationSize",internalPopulationSize);
+    //  lti::write(handler,"fitnessSpaceDimensionality",
+    //                     fitnessSpaceDimensionality);
 
 
       // serializing the genetics object is sort of difficult
@@ -198,9 +198,9 @@ namespace lti {
 
     if (b) {
 
-      lti::read(handler,"internalPopulationSize",internalPopulationSize);
-      lti::read(handler,"fitnessSpaceDimensionality",
-                fitnessSpaceDimensionality);
+    //  lti::read(handler,"internalPopulationSize",internalPopulationSize);
+    //  lti::read(handler,"fitnessSpaceDimensionality",
+    //            fitnessSpaceDimensionality);
 
       lti::read(handler,"engineName",engineName);
       lti::read(handler,"engineParamFile",engineParamFile);
@@ -1562,7 +1562,7 @@ namespace lti {
     return true;
   }
 
-  bool paretoFront::
+/*  bool paretoFront::
   getDataFromLog(const std::string& logFile,
                  matrix<double>& front,
                  std::vector<functor::parameters*>& phenotypes,
@@ -1598,7 +1598,7 @@ namespace lti {
 
     return false;
 
-  }
+  }*/
 
   int paretoFront::findLastIter(const std::string& logFile) const {
     static const std::string pattern(";; Iteration: ");
@@ -1626,7 +1626,7 @@ namespace lti {
                                 // very last iteration incomplete, so -1
   }
 
-  bool paretoFront::getDataFromLog(const std::string& logFile,
+/*  bool paretoFront::getDataFromLog(const std::string& logFile,
                                    parameters& params,
                                    std::vector<individual>& data,
                                    dmatrix& boundingBox,
@@ -1668,7 +1668,7 @@ namespace lti {
       setStatusString(lsh.getStatusString());
     }
     return false;
-  }
+  }*/
 
   // -------------------------------------------------------------------------
   //                      Multiple threads
@@ -1712,7 +1712,7 @@ namespace lti {
 
   void paretoFront::pfThread::run() {
     // almost infinite loop
-    do {
+  /*  do {
       sem_.wait();
       _lti_debug2("    paretoFront::pfThread::run() just awaked "<<who_<< "\n");
 
@@ -1745,7 +1745,7 @@ namespace lti {
         // the next processing package
         manager_->report(this,who_);
       }
-    } while(!stopRQ_);
+    } while(!stopRQ_);*/
   }
 
   // ---------------
