@@ -168,16 +168,18 @@ PESA::PESA() {
    return new parameters(*this);
  }
 
- // return parameters
- const PESA::parameters& PESA::getParameters() const {
-   const parameters* par =
-   dynamic_cast<const parameters*>(&functor::getParameters()  );
-   if(isNull(par)) {
-     std::cout<< "is Null IN PESA "   <<  "\n";
-     throw invalidParametersException(name());
-   }
-   return *par;
- }
+  // return parameters
+  const PESA::parameters& PESA::getParameters() const {
+    const parameters* par =
+    dynamic_cast<const parameters*>(&functor::getParameters()  );
+    std::cout<< "getting parameters PESA"   <<  "\n";
+
+    if(isNull(par)) {
+      std::cout<< "is Null IN PESA "   <<  "\n";
+      throw invalidParametersException(name());
+    }
+    return *par;
+  }
 
  // get type name
  const std::string& PESA::parameters::name() const {
@@ -388,7 +390,6 @@ PESA::PESA() {
 
    // The PESA Algorithm
    bool PESA::apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog) {
-     //paretoFront* pf=geneticEngine::pf_;
     // std::cout<<"applying pesa 1! \n";
 
      const geneticEngine::parameters& par = geneticEngine::getParameters();

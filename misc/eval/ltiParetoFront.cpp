@@ -37,7 +37,7 @@
 #include "ltiRound.h"
 #include "ltiGeneticEngine.h"
 #include "ltiPESA.h"
-
+#include "ltiNSGA2.h"
 #include <limits>
 #include <string>
 #include <sstream>
@@ -60,6 +60,8 @@ namespace lti {
 
   // default constructor
   _LTI_REGISTER_IN_FACTORY(geneticEngine,PESA);
+  _LTI_REGISTER_IN_FACTORY(geneticEngine,NSGA2);
+
 
   paretoFront::parameters::parameters()
     : functor::parameters() {
@@ -115,7 +117,7 @@ namespace lti {
     logFilename      = other.logFilename;
 
 
-    randomParams     = other.randomParams;
+    //randomParams     = other.randomParams;
     return *this;
   }
 
@@ -168,7 +170,7 @@ namespace lti {
 
       lti::write(handler,"logFilename",logFilename);
 
-      lti::write(handler,"randomParams",randomParams);
+    //  lti::write(handler,"randomParams",randomParams);
 
     }
 
@@ -233,7 +235,7 @@ namespace lti {
       lti::read(handler,"logFilename",logFilename);
 
 
-      lti::read(handler,"randomParams",randomParams);
+    //  lti::read(handler,"randomParams",randomParams);
     }
 
     b = b && functor::parameters::read(handler,false);
@@ -437,7 +439,6 @@ namespace lti {
         std::cout<<"verifying LogFront parameters PF: " <<  par.getGeneticsObject().name() <<"\n";
         //engine_->setParetoFront(this);
         //engine_->apply(PE,true);
-
 
 
       rnd_.setParameters(engine_->getParameters().randomParams);

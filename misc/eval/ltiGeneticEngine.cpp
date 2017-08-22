@@ -215,6 +215,8 @@ geneticEngine* geneticEngine::clone() const {
   const geneticEngine::parameters& geneticEngine::getParameters() const {
     const parameters* par =
     dynamic_cast<const parameters*>(&functor::getParameters()  );
+    std::cout<< "getting parameters GE"   <<  "\n";
+
     if(isNull(par)) {
       std::cout<< "is Null in GE"   <<  "\n";
       throw invalidParametersException(name());

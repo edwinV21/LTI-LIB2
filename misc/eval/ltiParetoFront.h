@@ -504,7 +504,7 @@ namespace lti {
       /**
        * Configuration of the random number generator
        */
-      univariateContinuousDistribution::parameters randomParams;
+      //univariateContinuousDistribution::parameters randomParams;
 
       /**
        * Set the genetics object to be used.
