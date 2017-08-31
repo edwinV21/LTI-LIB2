@@ -1,5 +1,7 @@
 ;; Protocol for lti::geneticsTester
 ;; Data
+<<<<<<< HEAD
+=======
 (((size 2)
   (data (10.67750072479248 7.09723234942093))) "11101101001001111101010001000101")
 (((size 2)
@@ -14406,3 +14408,4 @@
 (((size 2)
   (data (10.42549800872803 12.11171948370153))) "11101001000110111000000011001101")
 ;; Iteration: 999  Front size: 100  New individuals: 8 (MR: 1 bits)
+>>>>>>> 6cb44c4720e0afac750aa19befafdf1eda123206

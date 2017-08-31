@@ -43,6 +43,258 @@ namespace lti {
 
    bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog) {
 
+     const geneticEngine::parameters& par = geneticEngine::getParameters();
+     const genetics* geneticTools = &par.getGeneticsObject();
+
+     if (isNull(geneticTools)) {
+       setStatusString("Not a valid genetics object set yet");
+       return false;
+     }
+     // set the shadow for the mutation rate
+     const double initialMutationRate = (par.initialMutationRate < 0.0) ?
+       abs(par.initialMutationRate)/geneticTools->getChromosomeSize() :
+       par.initialMutationRate;
+
+     const double finalMutationRate = (par.finalMutationRate < 0.0) ?
+       abs(par.finalMutationRate)/geneticTools->getChromosomeSize() :
+       par.finalMutationRate;
+
+     // initial value for mutation rate
+     double mutationRate = initialMutationRate;
+
+     std::vector<geneticEngine::individual> PI; // internal population
+     vector<ubyte> mtSuccess;    // success flags for multi-threading mode
+
+     PE.clear();
+
+     //std::cout<<"applying pesa 2! \n";
+
+     // if the user desires to watch the evolution progress
+     if (haveValidProgressObject()) {
+       std::cout <<"valid progress Object \n";
+       getProgressObject().reset();
+       std::string str("Pareto Front Evaluation Test.\n");
+       str += "Evaluation class: ";
+       str += par.getGeneticsObject().name();
+       getProgressObject().setTitle(str);
+       getProgressObject().setMaxSteps(par.numOfIterations+2);
+     }
+
+     // ensure that the PE and PI vectors will have all memory they need
+     PE.reserve(par.internalPopulationSize+par.externalPopulationSize+1);
+
+
+     if (par.numberOfThreads > 1) {
+        queueProcessor_.init();
+     }
+
+     int lastIter=0;
+
+     if (initFromLog) {
+       // read the whole log and use it as initialization
+       // Some output if desired
+       if (haveValidProgressObject()) {
+         getProgressObject().step("Initialization from log file.");
+       }
+       if (getDataFromLog(par.logFilename,getRWParameters(),PI,bbox_,lastIter)){
+         // we need to re-adapt the parameters from the log file
+         if (haveValidProgressObject()) {
+           getProgressObject().setMaxSteps(par.numOfIterations+2);
+           getProgressObject().setStep(lastIter);
+         }
+
+         // update the genetic tools used
+         geneticTools = &par.getGeneticsObject();
+
+         // well, we need to continue logging at the end of the file
+         if (notNull(logOut_)) {
+           logOut_->close();
+           delete logOut_;
+           logOut_=0;
+         }
+         if (par.logFront) {
+           // append at the end of the file!
+           logOut_ = new std::ofstream(par.logFilename.c_str(),
+                                       std::ios_base::app);
+           olsh_.use(*logOut_);
+           logFront_ = false; // avoid rewriting the initialization
+         }
+       } else {
+         if (haveValidProgressObject()) {
+           std::string msg = "Problems reading log file (";
+           msg += getStatusString() + "). Aborting";
+           getProgressObject().step(msg);
+         }
+         return false;
+       }
+
+       // If there are not enough individuals in the internal population
+       // create a few more.
+       if (static_cast<int>(PI.size()) < par.internalPopulationSize) {
+         std::vector<geneticEngine::individual> tmpPI;
+         tmpPI.reserve(par.internalPopulationSize);
+
+         // Initialization of internal population: create random individuals
+         if (!initInternalPopulation(tmpPI)) {
+
+           // Some output if desired
+           if (haveValidProgressObject()) {
+             getProgressObject().step("Initialization failed.");
+           }
+           return false;
+         }
+
+         // copy all new generated elements
+         int i;
+         for (i=PI.size();i<par.internalPopulationSize;++i) {
+           PI.push_back(tmpPI[i]);
+         }
+
+       }
+     } // end of init from log
+     else {
+       // normal initialization
+
+       std::cout<<"applying pesa 3! \n";
+
+       PI.reserve(par.internalPopulationSize);
+
+       // Some output if desired
+       if (haveValidProgressObject()) {
+         getProgressObject().step("Initialization.");
+       }
+
+       // Initialization of internal population.
+       if (!initInternalPopulation(PI)) {
+
+         // Some output if desired
+         if (haveValidProgressObject()) {
+           getProgressObject().step("Intialization failed.");
+         }
+         return false;
+       }
+     }
+
+
+     bool initFirstFromLog = initFromLog;
+
+       // First Internal Population Evaluation (PI)
+
+      // updateSqueezeFactors = false;
+       //premortum = 0;
+
+       if (initFirstFromLog) {
+         // initialization from the log file
+        // updateSqueezeFactors = true;
+       }
+       else {
+
+         if (par.numberOfThreads<=1) {
+           // ---------------------------------------------
+           // Single thread processing is done sequentially
+           // ---------------------------------------------
+           for (unsigned int i=0;i<PI.size();++i) {
+             // for each individual in the internal pop.
+
+             if (haveValidProgressObject(1)) {
+               std::ostringstream oss;
+               oss << "Internal evaluation " << i+1 << "/" << PI.size();
+               getProgressObject().substep(1,oss.str());
+             }
+             // normal algorithm
+             if(geneticTools->evaluateChromosome(PI[i].genotype,
+                                                 PI[i].fitness,
+ 						PI[i].genotype)) {
+              // updateSqueezeFactors = (updateBoundingBox(PI[i].fitness,bbox_) ||
+              //                         updateSqueezeFactors);
+             } else {
+               // evaluation failed, but we need some dummy fitness:
+               // let's make the worst fitness for this one: zero everywhere
+               PI[i].fitness.assign(par.fitnessSpaceDimensionality,0.0);
+              // premortum++;
+             }
+
+             if (haveValidProgressObject(2)) {
+               // if the user wants, show the fitness vector
+               std::ostringstream oss;
+               oss << "Fitness: " << PI[i].fitness;
+               getProgressObject().substep(2,oss.str());
+             }
+           }
+         }
+       }
+
+   std::cout <<"fitness zero individual" << PI[0].fitness.at(0) <<"\n";
+
+   std::vector<std::vector<geneticEngine::individual> > frontiers;
+
+   assign_rank_and_crowding_distance(PI);
+
+
+
+   return true;
+
+   }
+
+  void NSGA2::assign_rank_and_crowding_distance(std::vector<geneticEngine::individual>& pop){
+    std::cout <<"applying rank and crowd distance! \n";
+     int rank=1;
+
+     for (unsigned int i=0;i<PI.size();++i) {
+
+        /*
+
+        We now create each front
+
+        */
+
+         for (unsigned int i=0;i<PI.size();++i) {
+           std::vector<geneticEngine::individual> front; 
+
+
+         }
+
+
+
+
+     }
+
+
+
+   }
+
+
+
+   // random initialization
+   bool NSGA2::initInternalPopulation(std::vector<geneticEngine::individual>& data) {
+     const geneticEngine::parameters& par = geneticEngine::getParameters();
+     data.resize(par.internalPopulationSize);
+
+     unsigned int i,abort;
+     // if no valid individual can be generated after abortThreshold tries,
+     // there is something wrong
+     static const unsigned int abortThreshold = 1000000;
+
+     i=0;
+     abort=0;
+     while ((abort<abortThreshold) && (i<data.size())) {
+       // for each individual
+
+       // for each bit
+       if (par.getGeneticsObject().initIndividual(i,data[i].genotype)) {
+         // only accept valid chromosomes in the initial population
+         i++;
+         abort = 0;
+       }
+       else {
+         abort++;
+       }
+     }
+
+     if (abort >= abortThreshold) {
+       setStatusString("Too many errors generating an individual.  Aborting.");
+       return false;
+     }
 
      return true;
    }
@@ -190,6 +442,12 @@ namespace lti {
       }
       return *par;
     }
+
+
+
+
+
+
 
 
 

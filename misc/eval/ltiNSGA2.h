@@ -385,11 +385,10 @@ class NSGA2 : public geneticEngine {
 
     const parameters& getParameters() const;
 
+    virtual bool initInternalPopulation(std::vector<geneticEngine::individual>& data);
 
 
-
-
-
+    void assign_rank_and_crowding_distance(std::vector<geneticEngine::individual>& pop);
 
 
 
