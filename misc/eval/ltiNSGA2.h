@@ -12,7 +12,6 @@ namespace lti {
 class NSGA2 : public geneticEngine {
   public :
     virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
-    //struct sortByfitness;
     void selection(std::vector<geneticEngine::individual>& childPop,int mutationRate,
       std::vector<geneticEngine::individual>&);
 
@@ -432,6 +431,7 @@ class NSGA2 : public geneticEngine {
 
     //std::vector<std::vector<geneticEngine::individual> > frontiers;
 
+    struct sortByCrowdingDistance;
 
 
 
