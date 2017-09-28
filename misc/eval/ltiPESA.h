@@ -27,8 +27,6 @@ class PESA : public geneticEngine {
 
     virtual const std::string& name() const;
 
-    struct scanLess;
-
     /**
      * Returns a pointer to a clone of this functor.
      */

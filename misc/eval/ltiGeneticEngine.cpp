@@ -221,6 +221,8 @@ geneticEngine* geneticEngine::clone() const {
       std::cout<< "is Null in GE"   <<  "\n";
       throw invalidParametersException(name());
     }
+    //std::cout<< "before returns"   <<  "\n";
+
     return *par;
   }
 

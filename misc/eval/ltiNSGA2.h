@@ -11,7 +11,15 @@ namespace lti {
 
 class NSGA2 : public geneticEngine {
   public :
-     virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
+    virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
+    //struct sortByfitness;
+    void selection(std::vector<geneticEngine::individual>& childPop,int mutationRate,
+      std::vector<geneticEngine::individual>&);
+
+    void mergePop(std::vector<geneticEngine::individual>& parentPop,
+    std::vector<geneticEngine::individual>& childPop);
+
+
     NSGA2();
     virtual ~NSGA2();
 
@@ -25,21 +33,50 @@ class NSGA2 : public geneticEngine {
      */
     virtual NSGA2* clone() const;
 
+
+     //template<int type> bool SortFunction(const geneticEngine::individual& a, const geneticEngine::individual& b);
     /**
      * Returns a pointer to a clone of this functor.
      */
     virtual NSGA2* newInstance() const;
 
 
+    /**
+     * Returns a random individual in the given population, which has
+     * been selected because it had a smaller squeeze factor in a binary
+     * tournament.
+     */
+    int binaryTournament(const std::vector<individual>& PE) const;
+
+
     //bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog );
 
 
+    /**
+     * Return true if a>b (a dominates b) after the definition used in the
+     * Pareto literature:
+     *
+     * a>b <=> for all i a[i]>=b[i] and it exists one i such that a[i]>b[i]
+     *
+     * The arguments a and b represent here multidimensional fitness values.
+     */
+    bool dominate(const dvector& a,
+                  const dvector& b) const;
 
 
-
-
-
-
+  class sorter {
+      int type_;
+      public:
+        sorter(int type) : type_(type) {}
+        bool operator()(geneticEngine::individual& a, geneticEngine::individual& b) const {
+        //  std::cout<<"sorting with type_" << type_ <<"\n";
+        if (a.fitness[type_]>b.fitness[type_]) {
+          return false;
+        } else  {
+            return true;
+        }
+        }
+  };
 
 
 
@@ -388,7 +425,13 @@ class NSGA2 : public geneticEngine {
     virtual bool initInternalPopulation(std::vector<geneticEngine::individual>& data);
 
 
-    void assign_rank_and_crowding_distance(std::vector<geneticEngine::individual>& pop);
+    std::vector<std::vector<geneticEngine::individual> > fastNonDominatedSort(std::vector<geneticEngine::individual>& pop);
+
+    void calculateCrowdingDistance(std::vector<geneticEngine::individual>& nonDominated);
+
+
+    //std::vector<std::vector<geneticEngine::individual> > frontiers;
+
 
 
 

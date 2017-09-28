@@ -475,6 +475,13 @@ class geneticEngine: public functor, public progressReporter   {
        */
       dvector fitness;
 
+      int dominant_count;
+
+      int rank;
+
+      std::vector<individual> domination_set;
+
+
       /**
        * Chromosome.
        *
@@ -490,6 +497,9 @@ class geneticEngine: public functor, public progressReporter   {
        */
       double squeezeFactor;
     };
+
+
+
 
     std::list<individual> deadIndividuals_;
 
