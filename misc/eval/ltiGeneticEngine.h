@@ -481,6 +481,7 @@ class geneticEngine: public functor, public progressReporter   {
 
       std::vector<individual> domination_set;
 
+      int id;
 
       /**
        * Chromosome.

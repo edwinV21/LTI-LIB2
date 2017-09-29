@@ -12,7 +12,7 @@ namespace lti {
 class NSGA2 : public geneticEngine {
   public :
     virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
-    void selection(std::vector<geneticEngine::individual>& childPop,int mutationRate,
+    void selection(std::vector<geneticEngine::individual>& childPop,double mutationRate,
       std::vector<geneticEngine::individual>&);
 
     void mergePop(std::vector<geneticEngine::individual>& parentPop,
@@ -424,7 +424,8 @@ class NSGA2 : public geneticEngine {
     virtual bool initInternalPopulation(std::vector<geneticEngine::individual>& data);
 
 
-    std::vector<std::vector<geneticEngine::individual> > fastNonDominatedSort(std::vector<geneticEngine::individual>& pop);
+    void  fastNonDominatedSort(std::vector<geneticEngine::individual>& pop,
+     std::vector<std::vector<geneticEngine::individual> >& frontResultant);
 
     void calculateCrowdingDistance(std::vector<geneticEngine::individual>& nonDominated);
 

@@ -755,6 +755,7 @@ PESA::PESA() {
        // update the mutation rate for the next time
        mutationRate = ((initialMutationRate-finalMutationRate)*
                        exp(-iter/par.mutationDecayRate)) + finalMutationRate;
+                    //   std::cout<<"mutationRate" <<mutationRate <<"\n";
 
      } while (true);
 
