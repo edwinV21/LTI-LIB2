@@ -547,6 +547,7 @@ namespace lti {
 
     void geneticEngine::queueProcessing::init() {
       // tell all threads to report to me!
+      std::cout<<"initializing queue processor" <<"\n";
       lock_.lock();
       ready_.clear();
       for (std::vector<pfThread*>::size_type i = 0;
@@ -556,6 +557,7 @@ namespace lti {
       }
 
       delete sem_;
+      std::cout<<"threads Size" << threads_.size() <<"\n";
       sem_ = new semaphore(threads_.size());
       lock_.unlock();
 
@@ -580,9 +582,13 @@ namespace lti {
         toDo.pop_front();
         lock_.unlock();
 
+
         _lti_debug2("queueProcessing::evaluate waiting...\n");
 
+      //  std::cout<<"evaluate waiting" <<"\n";
+
         sem_->wait(); // wait for the next processor to be ready
+        //std::cout<<"enough waiting" <<"\n";
 
         _lti_debug2("queueProcessing::evaluate enough waiting...\n");
 

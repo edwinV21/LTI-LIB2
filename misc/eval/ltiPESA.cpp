@@ -56,6 +56,10 @@ PESA::PESA() {
  PESA::~PESA() {
  }
 
+
+
+
+
  /**
   * Copy constructor
   * @param other the parameters object to be copied
@@ -489,7 +493,8 @@ PESA::PESA() {
 
 
      if (par.numberOfThreads > 1) {
-        queueProcessor_.init();
+       //queueProcessor_ = geneticEngine::queueProcessor_;
+       queueProcessor_.init();
      }
 
      int lastIter=0;
@@ -651,7 +656,7 @@ PESA::PESA() {
            // --------------------------------------------------
            // Multiple thread processing is done through a queue
            // --------------------------------------------------
-
+           std::cout<<"applying multi-threading" <<"\n";
            queueProcessor_.evaluate(PI,mtSuccess,*geneticTools);
            for (int i=0;i<mtSuccess.size();++i) {
              if (mtSuccess.at(i) != 0) {

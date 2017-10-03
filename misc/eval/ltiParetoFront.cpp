@@ -443,6 +443,7 @@ namespace lti {
       rnd_.setParameters(engine_->getParameters().randomParams);
       if (engine_->getParameters().numberOfThreads>1) {
         queueProcessor_.setNumberOfThreads(engine_->getParameters().numberOfThreads);
+        engine_->queueProcessor_.setNumberOfThreads(  engine_->getParameters().numberOfThreads );
       }
 
       return true;

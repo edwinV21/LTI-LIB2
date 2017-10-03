@@ -22,7 +22,7 @@
 #include <sstream>
 #include "ltiMatrix.h"
 #include "ltiLispStreamHandler.h"
-
+#include "ltiSemaphore.h"
 
 
 
@@ -738,7 +738,7 @@ class geneticEngine: public functor, public progressReporter   {
       /**
        * Semaphore for inter-thread communication
        */
-      semaphore sem_;
+      lti::semaphore sem_;
 
       /**
        * Protect the attributes
