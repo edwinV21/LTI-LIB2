@@ -1,3 +1,13 @@
+
+/*--------------------------------------------------------------------
+ * project ....: LTI-Lib: Image Processing and Computer Vision Library
+ * file .......: ltiGeneticEngine.cpp
+ * authors ....: Edwin Vasquez
+ * organization: LTI, Tecnologico de Costa Rica
+ * creation ...: 01.09.2017
+ * revisions ..:
+ */
+
 #include <iostream>
 #include "ltiGeneticEngine.h"
 #include "ltiPESA.h"
@@ -13,6 +23,7 @@ namespace std {
 #undef _LTI_DEBUG
 
 namespace lti {
+
 
 
    geneticEngine::geneticEngine(): functor(),progressReporter(),queueProcessor_(*this) {
@@ -36,6 +47,10 @@ namespace lti {
    _LTI_RETURN_CLASS_NAME
  }
 
+ /**
+  * Convert a chromosome into a string, to be saved in the log file
+  */
+
 
  void geneticEngine::chromosomeToString(const chromosome& genotype,
                                       std::string& str) const {
@@ -48,6 +63,11 @@ namespace lti {
    }
  }
 
+ /**
+  * Convert a string into a chromosome into a string, to be loaded from
+  * the log file
+  */
+
  void geneticEngine::stringToChromosome(const std::string& str,
                                       chromosome& genotype) const {
    genotype.resize(str.length());
@@ -58,7 +78,10 @@ namespace lti {
  }
 
 
-
+ /*
+ * initialize the geneticEngine with the necessary variables from the paretoFront
+ *
+ */
  void geneticEngine::initAlg(dmatrix& pbbox_,dvector& psigmas_ ,univariateContinuousDistribution& prnd_,
     bool& plogEvaluations_, bool& plogFront_ , lispStreamHandler& polsh_,std::ofstream* plogOut_
     , std::list<individual>& pdeadIndividuals_ ,
@@ -74,22 +97,17 @@ namespace lti {
 
     }
 
-/*
-geneticEngine* geneticEngine::clone() const {
-   return new geneticEngine(*this);
- }
-*/
 
-/*void geneticEngine::setParetoFront(paretoFront* pPf){
-  pf_=pPf;
-
-}*/
-
+    /**
+     * Returns a pointer to a clone of this functor.
+     */
 
  geneticEngine* geneticEngine::newInstance() const {
    return new geneticEngine();
  }
-
+ /**
+  * Returns a pointer to a clone of this functor.
+  */
  geneticEngine* geneticEngine::clone() const {
    return new geneticEngine(*this);
  }
@@ -99,12 +117,33 @@ geneticEngine* geneticEngine::clone() const {
    copy(other);
  }
 
+ /**
+  * Copy data of "other" functor.
+  * @param other the functor to be copied
+  * @return a reference to this functor object
+  */
+
  geneticEngine& geneticEngine::copy(const geneticEngine& other)  {
     //geneticEngine::copy(other);
     // all other attributes are initialized by updateParameters, called when
     // the copy of the parent class sets the parameters.
     return *this;
   }
+
+  /**
+   * Get data from log
+   *
+   * This method reads the log file and create the corresponding data.
+   * Since usually the logs are broken (the user breaks the execution of
+   * a long computing process), this method needs to cope with broken
+   * files.
+   *
+   * @param logFile name of the file with the log
+   * @param params parameters as written in the log file
+   * @param data all data found in the log file.
+   * @param boundingBox bounding box of the data
+   * @return true if successful.
+   */
 
   bool geneticEngine::getDataFromLog(const std::string& logFile,
                                    parameters& params,
@@ -115,6 +154,12 @@ geneticEngine* geneticEngine::clone() const {
   }
 
 
+
+  /*
+  *
+  * Initialize the geneticEngine parameters
+  *
+  */
   geneticEngine::parameters::parameters()
     : functor::parameters() {
 
@@ -147,12 +192,6 @@ geneticEngine* geneticEngine::clone() const {
     delete geneticsObject_;
     geneticsObject_=0;
   }
-
-
-
-
-
-
 
 
 
@@ -336,12 +375,17 @@ geneticEngine* geneticEngine::clone() const {
     return b;
   }
 
-
+  /**
+   * Return a writable reference to the genetics object
+   */
   genetics& geneticEngine::parameters::getGeneticsObject() {
     assert(notNull(geneticsObject_));
     return *geneticsObject_;
   }
 
+  /**
+   * Return a writable reference to the genetics object
+   */
 
 
   const genetics& geneticEngine::parameters::getGeneticsObject() const {
@@ -350,18 +394,17 @@ geneticEngine* geneticEngine::clone() const {
   }
 
 
-
+  /**
+   * Set the genetics object to be used.
+   *
+   * A copy of the given object will be done.
+   */
 
   bool geneticEngine::parameters::setGeneticsObject( genetics* obj) {
     delete geneticsObject_;
     geneticsObject_=obj;
     return (notNull(geneticsObject_));
   }
-
-
-
-
-
 
 
 

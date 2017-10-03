@@ -1,4 +1,13 @@
 
+/* -------------------------------------------------------------------
+ * project ....: LTI-Lib: Image Processing and Computer Vision Library
+ * file .......: ltiPESA.cpp
+ * authors ....: Edwin Vasquez
+ * organization: Tecnologico de Costa Rica
+ * creation ...: 01.09.2017
+ * revisions ..:
+ */
+
 #include <iostream>
 #include "ltiPESA.h"
 #include "ltiFunctor.h"
@@ -16,8 +25,6 @@
 
 
 
-
-
 #ifdef _LTI_GNUC_2
 namespace std {
   typedef ios ios_base;
@@ -32,8 +39,13 @@ namespace lti {
 
 
 
+/*
+* Default Constructor
+*
+*/
+
 PESA::PESA() {
-  std::cout <<"printing PESA";
+
 }
 
 
@@ -44,19 +56,25 @@ PESA::PESA() {
  PESA::~PESA() {
  }
 
+ /**
+  * Copy constructor
+  * @param other the parameters object to be copied
+  */
  PESA::PESA(const PESA& other) : geneticEngine()
     {
    copy(other);
  }
-
+ /**
+  * Copy data of "other" functor.
+  * @param other the functor to be copied
+  * @return a reference to this functor object
+  */
  PESA& PESA::copy(const PESA& other)  {
     //geneticEngine::copy(other);
     // all other attributes are initialized by updateParameters, called when
     // the copy of the parent class sets the parameters.
     return *this;
   }
-
-
 
 
 /*
@@ -66,13 +84,17 @@ PESA::PESA() {
    _LTI_RETURN_CLASS_NAME
  }
 
-
+ /**
+  * Returns a pointer to a clone of this functor.
+  */
 
  PESA* PESA::clone() const {
    return new PESA(*this);
  }
 
-
+ /**
+  * Returns a pointer to a clone of this functor.
+  */
 
  PESA* PESA::newInstance() const {
    return new PESA();
@@ -106,8 +128,6 @@ PESA::PESA() {
    frontFile = "pareto.pf";
 
  }
-
-
 
 
 
@@ -229,6 +249,11 @@ PESA::PESA() {
    return res;
  }
 
+
+ /**
+  * Class used to compare individuals in "scanning order"
+  */
+
  struct  PESA::scanLess
    : public std::binary_function<dvector,dvector,bool> {
    bool operator()(const geneticEngine::individual& a,
@@ -245,7 +270,9 @@ PESA::PESA() {
      return false;
    }
  };
-
+ /**
+  * Initialize the bounding box
+  */
  void PESA::initBoundingBox(dmatrix& boundingBox) const {
    const geneticEngine::parameters& par =geneticEngine::getParameters();
    boundingBox.resize(2,par.fitnessSpaceDimensionality);
@@ -279,6 +306,11 @@ PESA::PESA() {
    return changed;
  }
 
+ /**
+  * Update fitness space subdivision.
+  *
+  * This initializes the sigmas based on the bounding box contents.
+ */
 
  void PESA::updateFitnessSpaceSubdivision() {
    const geneticEngine::parameters& par = geneticEngine::getParameters();
@@ -291,6 +323,17 @@ PESA::PESA() {
    }
  }
 
+ /**
+  * Get data from log
+  *
+  * If a log file is generated, usually you cannot read the used
+  * parameterization.  With this method you will get from the log file the
+  * list of parameters and their corresponding fitness values, as if you
+  * had used the corresponding apply method.
+  *
+  * The parameters of the current functor will change without invalidating
+  * the reference.  Therefore this method is not constant.
+  */
 
 
  bool PESA::getDataFromLog(const std::string& logFile,
@@ -337,6 +380,11 @@ PESA::PESA() {
    return false;
  }
 
+ /**
+ * The log-file has in the comments the iteration number.  We can
+ * try to rescue that number from there.
+ */
+
  int PESA::findLastIter(const std::string& logFile) const {
    static const std::string pattern(";; Iteration: ");
 
@@ -363,6 +411,13 @@ PESA::PESA() {
                                // very last iteration incomplete, so -1
  }
 
+
+ /**
+  * Update density factors.
+  *
+  * Recompute all squeeze factors for the individuals in the
+  * external population
+  */
  void PESA::updateDensityFactors(std::vector<geneticEngine::individual>& PE) {
    std::vector<geneticEngine::individual>::iterator it,jt;
 
@@ -772,6 +827,10 @@ PESA::PESA() {
      return true;
    }
 
+   /*
+   * initialize the geneticEngine with the necessary variables from the paretoFront
+   *
+   */
    void PESA::initAlg(dmatrix& pbbox_,dvector& psigmas_ ,univariateContinuousDistribution& prnd_,
       bool& plogEvaluations_, bool& plogFront_ , lispStreamHandler& polsh_,std::ofstream* plogOut_,
         std::list<geneticEngine::individual>& pdeadIndividuals_,
@@ -821,6 +880,14 @@ PESA::PESA() {
      return true;
    }
 
+   /**
+    * Return true if a>b (a dominates b) after the definition used in the
+    * Pareto literature:
+    *
+    * a>b <=> for all i a[i]>=b[i] and it exists one i such that a[i]>b[i]
+    *
+    * The arguments a and b represent here multidimensional fitness values.
+    */
    bool PESA::dominate(const dvector& a,
                               const dvector& b) const {
      bool theOne = false;

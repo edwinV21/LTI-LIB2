@@ -62,7 +62,6 @@ namespace lti {
   _LTI_REGISTER_IN_FACTORY(geneticEngine,PESA);
   _LTI_REGISTER_IN_FACTORY(geneticEngine,NSGA2);
 
-
   paretoFront::parameters::parameters()
     : functor::parameters() {
 

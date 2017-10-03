@@ -1,3 +1,14 @@
+
+/*--------------------------------------------------------------------
+ * project ....: LTI-Lib: Image Processing and Computer Vision Library
+ * file .......: ltiNSGA2.h
+ * authors ....: Edwin Vasquez
+ * organization: LTI, Tecnologico de Costa Rica
+ * creation ...: 01.09.2017
+ * revisions ..:
+ */
+
+
 #include "ltiGeneticEngine.h"
 #include "ltiProgressReporter.h"
 
@@ -9,31 +20,96 @@
 namespace lti {
 
 
+    /**
+     * Pareto Front computation with NSGA2
+     *
+     * The algorithm used here to generate the front is called NSGA2 (
+     * Non Dominated Sorting Genetic Algorithm 2), and it is described in:
+     *
+     * Kalyanmoy Deb, Associate Member, IEEE, Amrit Pratap, Sameer Agarwal, and T. Meyarivan
+     *
+     * This algorithm uses two main procedures call the Fast Non Dominated Sort,
+     * and the Crowding-Distance-Assignment.
+     *
+     * The Fast Non Dominated Sort is based in the calculation of a series
+     * of fronts that selects the most non dominant individuals of the population
+     *
+     * The crowding distance assignment is basically a density estimation
+     * of each individual, which calculates the distance between the members
+     * of the population and determines which individuals are in a more dense
+     * position than others
+     *
+     */
+
+
 class NSGA2 : public geneticEngine {
   public :
+    /*
+    * Apply Method of the genetic Algorithm, this executes the NSGA-II Algorithm
+    * with the specified parameters
+    * @param PE resultant population
+    * @param initFromLog flag that specifies if the execution should be resumed from a log file
+    * @return return true if the algorithm was executed correctly
+    *
+    */
     virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
-    void selection(std::vector<geneticEngine::individual>& childPop,double mutationRate,
-      std::vector<geneticEngine::individual>&);
+
+    /*
+    * Returns a child population by making a crossover or mutation
+    *of a given population
+    * @param parentPop parent Population
+    * @param mutationRate rate that specifies how much the new population should be mutated
+    * @param childPop resultant population
+    *
+    */
+    void selection(std::vector<geneticEngine::individual>& parentPop,double mutationRate,
+      std::vector<geneticEngine::individual>& childPop);
+
+    /*
+    * Merges the child Population with the parent population
+    * and verifies if there are duplicated members
+    *
+    * @param parentPop parent Population and the resultant population of the merge
+    * @param childPop child population that will be merged
+    *
+    */
 
     void mergePop(std::vector<geneticEngine::individual>& parentPop,
     std::vector<geneticEngine::individual>& childPop);
 
+    /*
+    * Default Constructor
+    *
+    */
 
     NSGA2();
+    /*
+    * Default Destructor
+    *
+    */
     virtual ~NSGA2();
 
+    /**
+     * Copy constructor
+     * @param other the parameters object to be copied
+     */
     NSGA2(const NSGA2& other);
-
+    /**
+     * Copy data of "other" functor.
+     * @param other the functor to be copied
+     * @return a reference to this functor object
+     */
     NSGA2& copy(const NSGA2& other);
 
+    /**
+     * Returns the name of this type ("NSGA2")
+     */
     virtual const std::string& name() const;
     /**
      * Returns a pointer to a clone of this functor.
      */
     virtual NSGA2* clone() const;
 
-
-     //template<int type> bool SortFunction(const geneticEngine::individual& a, const geneticEngine::individual& b);
     /**
      * Returns a pointer to a clone of this functor.
      */
@@ -48,8 +124,6 @@ class NSGA2 : public geneticEngine {
     int binaryTournament(const std::vector<individual>& PE) const;
 
 
-    //bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog );
-
 
     /**
      * Return true if a>b (a dominates b) after the definition used in the
@@ -62,8 +136,10 @@ class NSGA2 : public geneticEngine {
     bool dominate(const dvector& a,
                   const dvector& b) const;
 
-
-  class sorter {
+    /*
+    *Class that sort two individuals based on the fitness, in ascending order
+    */
+    class sorter {
       int type_;
       public:
         sorter(int type) : type_(type) {}
@@ -75,13 +151,14 @@ class NSGA2 : public geneticEngine {
             return true;
         }
         }
-  };
+    };
 
 
-
-
-
-
+    /**
+     * The parameters for the class NSGA2.
+     *
+     * These are specific parameters for the computation of the NSGA2 algorithm.
+     */
     class parameters : public functor::parameters {
     public:
       /**
@@ -119,9 +196,6 @@ class NSGA2 : public geneticEngine {
        * @return a reference to this parameters object
        */
       parameters& copy(const parameters& other);
-
-
-
 
 
 
@@ -419,29 +493,33 @@ class NSGA2 : public geneticEngine {
 
     };
 
+    /**
+     * Returns used parameters
+     */
+
     const parameters& getParameters() const;
+
 
     virtual bool initInternalPopulation(std::vector<geneticEngine::individual>& data);
 
-
+    /**
+     * Makes the computation of the Fast Non Dominant Sort Algorithm
+     * @param pop population to be applied this algorithm
+     * @param frontResultant resultant fronts that contains the best individuals
+     * of the population
+     */
     void  fastNonDominatedSort(std::vector<geneticEngine::individual>& pop,
      std::vector<std::vector<geneticEngine::individual> >& frontResultant);
-
+     /**
+      * Makes the computation of the crowding distance given a population
+      * @param nonDominated population that will be calculated his density
+      */
     void calculateCrowdingDistance(std::vector<geneticEngine::individual>& nonDominated);
 
-
-    //std::vector<std::vector<geneticEngine::individual> > frontiers;
-
+    /**
+     * Structure that sorts a given population by his crowding distance
+     */
     struct sortByCrowdingDistance;
-
-
-
-
-
-
-
-
-
 
 
 

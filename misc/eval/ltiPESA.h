@@ -1,3 +1,12 @@
+
+/*--------------------------------------------------------------------
+ * project ....: LTI-Lib: Image Processing and Computer Vision Library
+ * file .......: ltiPESA.h
+ * authors ....: Edwin Vasquez
+ * organization: LTI, Tecnologico de Costa Rica
+ * creation ...: 01.09.2017
+ * revisions ..:
+ */
 #include "ltiGeneticEngine.h"
 #include "ltiProgressReporter.h"
 
@@ -7,24 +16,112 @@
 
 namespace lti {
 
+  /**
+   * The algorithm used here to generate the front is called PESA (Pareto
+   * Envelope-based Selection Algorithm), and it is described in:
+   *
+   * David. W. Corne, Joshua D. Knowles and Martin J. Oates
+   * The Pareto Envelope-based Selection Algorithm for Multiobjective
+   * Optimization. In: Proceedings of the International Conference on Parallel
+   * Problem Solving from Nature (PPSN VI). (2000) 839-848
+   *
+   * A good introduction to the application of this problem for the
+   * evaluation of image processing algorithms, specifically to the evaluation
+   * of segmentation is given in:
+   *
+   * Mark Everingham, Henk Muller and Barry Thomas, Evaluating Image
+   * Segmentation Algorithms using the Pareto Front. In Proceedings of
+   * the 7th European Conference on Computer Vision (ECCV2002), Part
+   * IV (LNCS 2353), pages 34-48. Springer, June 2002.
+   *
+   * http://www.cs.bris.ac.uk/Tools/Reports/Abstracts/2002-everingham-1.html
+   *
+   * and it was also used in
+   *
+   * Pablo Alvarado, "Segmentation of color images for interactive 3D object
+   * retrieval".  Ph.D. Thesis.  RWTH-Aachen, July 2004 that can be downloaded
+   * at
+   *
+   * http://sylvester.bth.rwth-aachen.de/dissertationen/2004/121/04_121.pdf
+   *
+   *
+   * This is the parent class for all evaluation algorithms using PESA, which
+   * usually do not need any modification.  The genetic part of the algorithm
+   * is mostly implemented in the application dependent classes inherited from
+   * lti::genetics.
+   *
+   * There is a deviation from the original paper which is more suitable for
+   * the evaluation of algorithms used here.  The original algorithms
+   * separates the fitness space into regular hyperboxes and computes the
+   * density of individuals in each hyperbox to decide which elements will be
+   * used for crossover or mutation (those boxes with the smallest density)
+   * and which elements need to be removed (those with the highest density).
+   * The computation of the density is in the present functor much more
+   * computationally expensive, but its computation is nevertheless negligible
+   * in comparison to the computation of the fitness measures for an
+   * algorithm:
+   *
+   * The current algorithm keeps track of the bounding box of the fitness
+   * space for which individuals have been created.  This bounding box is used
+   * to determine the size of a Gaussian kernel, which will be used on each
+   * individual to compute the influence of all other individuals in the
+   * front.  This way, the selection is not strongly bounded to the selection
+   * of a partitioning of the fitness space.
+   *
+   * For an example of an evaluation class see lti::locationSearchEvaluation.
+   *
+   * \section Progress information
+   *
+   *
+
+   */
+
 
 class PESA : public geneticEngine {
   public :
+  /*
+  * Apply Method of the genetic Algorithm, this executes the NSGA-II Algorithm
+  * with the specified parameters
+  * @param PE resultant population
+  * @param initFromLog flag that specifies if the execution should be resumed from a log file
+  * @return return true if the algorithm was executed correctly
+  *
+  */
      virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
-
-
+     /*
+     * Default Constructor
+     *
+     */
     PESA();
-    //bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog );
 
-
-
+    /**
+     * Class used to compare individuals in "scanning order"
+     */
     struct scanLess;
 
+    /*
+    * Default Destructor
+    *
+    */
     virtual ~PESA();
+    /**
+     * Copy constructor
+     * @param other the parameters object to be copied
+     */
     PESA(const PESA& other);
+
+    /**
+     * Copy data of "other" functor.
+     * @param other the functor to be copied
+     * @return a reference to this functor object
+     */
 
     PESA& copy(const PESA& other);
 
+
+    /**
+     * Returns the name of this type ("PESA")
+     */
     virtual const std::string& name() const;
 
     /**
@@ -107,10 +204,6 @@ class PESA : public geneticEngine {
        * @return a reference to this parameters object
        */
       parameters& copy(const parameters& other);
-
-
-
-
 
 
 
@@ -407,9 +500,25 @@ class PESA : public geneticEngine {
 
     };
 
+
+    /**
+     * Returns used parameters
+     */
     const parameters& getParameters() const;
 
     virtual bool initInternalPopulation(std::vector<geneticEngine::individual>& data);
+
+    /**
+     * Get data from log
+     *
+     * If a log file is generated, usually you cannot read the used
+     * parameterization.  With this method you will get from the log file the
+     * list of parameters and their corresponding fitness values, as if you
+     * had used the corresponding apply method.
+     *
+     * The parameters of the current functor will change without invalidating
+     * the reference.  Therefore this method is not constant.
+     */
 
 
     virtual bool getDataFromLog(const std::string& logFile,
@@ -418,9 +527,15 @@ class PESA : public geneticEngine {
                         dmatrix& boundingBox,
                         int& lastIter) const;
 
-
+  /**
+  * The log-file has in the comments the iteration number.  We can
+  * try to rescue that number from there.
+  */
    int findLastIter(const std::string& logFile) const;
 
+   /**
+    * Initialize the bounding box
+    */
    void initBoundingBox(dmatrix& boundingBox) const;
 
 
@@ -433,7 +548,11 @@ class PESA : public geneticEngine {
    bool updateBoundingBox(const dvector& pnt,
                                 dmatrix& boundingBox) const;
 
-
+  /**
+   * Update fitness space subdivision.
+   *
+   * This initializes the sigmas based on the bounding box contents.
+  */
 
   void updateFitnessSpaceSubdivision();
 
@@ -497,6 +616,10 @@ class PESA : public geneticEngine {
       bool logEntry(const geneticEngine::individual& ind,const bool markDead=false);
 
 
+      /*
+      * initialize the geneticEngine with the necessary variables from the paretoFront
+      *
+      */
       virtual void initAlg(dmatrix& bbox_,dvector& sigmas_ ,univariateContinuousDistribution& rnd_,
          bool& logEvaluations_, bool& logFront_ , lispStreamHandler& olsh_,std::ofstream* logOut_,
          std::list<individual>& deadIndividuals_ ,
