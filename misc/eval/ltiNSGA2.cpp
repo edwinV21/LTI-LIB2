@@ -440,6 +440,14 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                                 }
                         }
                 }
+                else{
+                        std::cout<<"applying multi-threading" <<"\n";
+                        queueProcessor_.evaluate(PI,mtSuccess,*geneticTools);
+                }
+
+
+
+
         }
 
 
@@ -470,29 +478,35 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                 for (unsigned int i=0; i<PI.size(); ++i) {
                         // for each individual in the internal pop.
+                        if (par.numberOfThreads<=1) {
 
-                        if (haveValidProgressObject(1)) {
-                                std::ostringstream oss;
-                                //     oss << "Internal evaluation " << i+1 << "/" << childPop.size();
-                                //   getProgressObject().substep(1,oss.str());
+                                if (haveValidProgressObject(1)) {
+                                        std::ostringstream oss;
+                                        //     oss << "Internal evaluation " << i+1 << "/" << childPop.size();
+                                        //   getProgressObject().substep(1,oss.str());
+                                }
+                                // normal algorithm
+                                if(geneticTools->evaluateChromosome(childPop[i].genotype,
+                                                                    childPop[i].fitness,
+                                                                    childPop[i].genotype)) {
+                                        // updateSqueezeFactors = (updateBoundingBox(PI[i].fitness,bbox_) ||
+                                        //                         updateSqueezeFactors);
+                                } else {
+                                        // evaluation failed, but we need some dummy fitness:
+                                        // let's make the worst fitness for this one: zero everywhere
+                                        childPop[i].fitness.assign(par.fitnessSpaceDimensionality,0.0);
+                                        // premortum++;
+                                }
+                                if (haveValidProgressObject(2)) {
+                                        // if the user wants, show the fitness vector
+                                        std::ostringstream oss;
+                                        //   oss << "Fitness: " << childPop[i].fitness;
+                                        // getProgressObject().substep(2,oss.str());
+                                }
                         }
-                        // normal algorithm
-                        if(geneticTools->evaluateChromosome(childPop[i].genotype,
-                                                            childPop[i].fitness,
-                                                            childPop[i].genotype)) {
-                                // updateSqueezeFactors = (updateBoundingBox(PI[i].fitness,bbox_) ||
-                                //                         updateSqueezeFactors);
-                        } else {
-                                // evaluation failed, but we need some dummy fitness:
-                                // let's make the worst fitness for this one: zero everywhere
-                                childPop[i].fitness.assign(par.fitnessSpaceDimensionality,0.0);
-                                // premortum++;
-                        }
-                        if (haveValidProgressObject(2)) {
-                                // if the user wants, show the fitness vector
-                                std::ostringstream oss;
-                                //   oss << "Fitness: " << childPop[i].fitness;
-                                // getProgressObject().substep(2,oss.str());
+                        else{
+                          queueProcessor_.evaluate(childPop,mtSuccess,*geneticTools);
+
                         }
                 }
                 // PI.insert( PI.begin(),childPop.begin(),childPop.end()   );
@@ -514,12 +528,12 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                 std::vector <geneticEngine::individual> nextPop;
 
-              /*  std::cout<<"frontResultant size "<< frontResultant.size() <<"\n";
-                for (unsigned int i=0; i<frontResultant.size(); ++i) {
-                        std::cout<<"Size in Frontier "<<i << "   "<< frontResultant.at(i).size()   <<"\n";
+                /*  std::cout<<"frontResultant size "<< frontResultant.size() <<"\n";
+                   for (unsigned int i=0; i<frontResultant.size(); ++i) {
+                          std::cout<<"Size in Frontier "<<i << "   "<< frontResultant.at(i).size()   <<"\n";
 
 
-                }*/
+                   }*/
                 //std::cout<<  "after fastNonDominatedSort "  << "\n";
 
                 for (unsigned int i=0; i<frontResultant.size(); ++i) {
@@ -531,7 +545,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                                 calculateCrowdingDistance(frontResultant.at(i) );
                                 for (unsigned int j=0; j<frontResultant.at(i).size(); ++j) {
-                                      //  std::cout<<"frontResultant fitness" <<frontResultant[i][j].fitness   <<"\n";
+                                        //  std::cout<<"frontResultant fitness" <<frontResultant[i][j].fitness   <<"\n";
 
                                         nextPop.push_back(frontResultant.at(i).at(j) );
                                 }
@@ -541,7 +555,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                         }
                         else{
-                            //    std::cout<<"is More!"<<"\n";
+                                //    std::cout<<"is More!"<<"\n";
                                 calculateCrowdingDistance(frontResultant.at(i));
 
                                 //for (unsigned int s=0;s<frontResultant.at(i).size();++s) {
