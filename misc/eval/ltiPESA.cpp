@@ -599,7 +599,7 @@ PESA::PESA() {
      bool updateSqueezeFactors;
      bool initFirstFromLog = initFromLog;
      unsigned int premortum;
-
+     std::cout<<"iter" <<iter <<"\n";
      timer chrono(timer::Wall); // timer used to estimate remaining time
      double startTime(0.0);
      int startIteration(0);

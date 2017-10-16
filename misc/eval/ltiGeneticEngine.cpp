@@ -230,10 +230,12 @@ namespace lti {
    */
 
   bool geneticEngine::getDataFromLog(const std::string& logFile,
-                                   parameters& params,
-                                   std::vector<individual>& data,
+                                   geneticEngine::parameters& params,
+                                   std::vector<geneticEngine::individual>& data,
                                    dmatrix& boundingBox,
                                    int& lastIter) const {
+
+
     return true;
   }
 

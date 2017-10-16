@@ -251,6 +251,126 @@ struct  NSGA2::sortByCrowdingDistance
         }
 };
 
+
+
+/**
+ * Get data from log
+ *
+ * If a log file is generated, usually you cannot read the used
+ * parameterization.  With this method you will get from the log file the
+ * list of parameters and their corresponding fitness values, as if you
+ * had used the corresponding apply method.
+ *
+ * The parameters of the current functor will change without invalidating
+ * the reference.  Therefore this method is not constant.
+ */
+
+
+bool NSGA2::getDataFromLog(const std::string& logFile,
+                                 geneticEngine::parameters& params,
+                                 std::vector<geneticEngine::individual>& data,
+                                 dmatrix& boundingBox,
+                                 int& lastIter) const {
+
+  std::ifstream in(logFile.c_str());
+  lastIter=0;
+
+  if (in) {
+    lispStreamHandler lsh(in);
+
+    if (params.read(lsh)) {
+      data.clear();
+    //  initBoundingBox(boundingBox);
+      std::string str;
+      bool ok;
+      // read data one by one
+      while (lsh.tryBegin()) {
+        data.push_back(individual());
+        geneticEngine::individual& indiv = data[data.size()-1];
+        ok = indiv.fitness.read(lsh);
+        //std::cout <<"fitness in file" << indiv.fitness <<"\n";
+        //updateBoundingBox(indiv.fitness,boundingBox);
+        ok = lsh.readDataSeparator() && ok;
+        ok = lsh.read(str) && ok;
+        geneticEngine::stringToChromosome(str,indiv.genotype);
+        ok = lsh.readEnd() && ok;
+        if (!ok ||
+            (static_cast<int>(indiv.fitness.size()) !=
+             params.fitnessSpaceDimensionality) ||
+            (static_cast<int>(indiv.genotype.size()) !=
+             params.getGeneticsObject().getChromosomeSize())) {
+          // wrong element.  Delete it
+          data.pop_back();
+        }
+      }
+
+      in.close(); // ensure the log is closed before the next step
+      lastIter = findLastIter(logFile);
+
+      return true;
+    }
+    setStatusString(lsh.getStatusString());
+  }
+  return false;
+}
+
+
+/**
+* The log-file has in the comments the iteration number.  We can
+* try to rescue that number from there.
+*/
+
+int NSGA2::findLastIter(const std::string& logFile) const {
+  static const std::string pattern(";; Iteration: ");
+
+  std::ifstream in(logFile.c_str()); // open the log for reading
+  std::string line,subline;
+  std::string::size_type pos;
+  int last=0;
+  int count=0;
+  if (in) { // if it exists
+    while(std::getline(in,line)) { // while file ok
+      if ((pos=line.find(pattern) != std::string::npos)) { // if log comment
+        ++count; // one additional iteration found
+        subline=line.substr(pos+pattern.length()-1);
+        std::istringstream strstm(subline);
+        int tmp;
+        strstm >> tmp; // get the iteration from the log
+        if (tmp > last) {
+          last = tmp;
+        }
+      }
+    }
+  }
+  return max(last-1,count-2); // last is 0-based, count isn't
+                              // very last iteration incomplete, so -1
+}
+
+
+bool NSGA2::logEntry(const geneticEngine::individual& ind,const bool markDead) {
+  if (logFront_) {
+    std::string str;
+    // save new incomer in the log if so desired
+    olsh_.writeBegin();
+    ind.fitness.write(olsh_);
+    olsh_.writeDataSeparator();
+    geneticEngine::chromosomeToString(ind.genotype,str);
+    olsh_.write(str);
+    olsh_.writeEnd();
+    if (markDead) {
+      (*logOut_) << " ;; x" ;
+    }
+    (*logOut_) << std::endl; // force EOL
+
+    logOut_->flush();                   // force to write the file
+    return true;
+  }
+  return false;
+}
+
+
+
+
 /*
  * Apply Method of the genetic Algorithm, this executes the NSGA-II Algorithm
  * with the specified parameters
@@ -348,7 +468,9 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                 // If there are not enough individuals in the internal population
                 // create a few more.
+                //std::cout <<"PI SIZEEE!" <<PI.size();
                 if (static_cast<int>(PI.size()) < par.internalPopulationSize) {
+
                         std::vector<geneticEngine::individual> tmpPI;
                         tmpPI.reserve(par.internalPopulationSize);
 
@@ -369,11 +491,24 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                         }
 
                 }
+                else if (static_cast<int>(PI.size()) > par.internalPopulationSize){
+                  std::cout <<"is greater! \n";
+                  std::vector<geneticEngine::individual> tmpVect;
+                  unsigned int sizePI=PI.size()-1;
+                  std::cout <<"size PI!"<< sizePI <<"\n";
+                  for(unsigned int j=0;j<par.internalPopulationSize;j++){
+                    std::cout <<"fitness in sizePi!"<< PI[sizePI].fitness <<"\n";
+                    tmpVect.push_back(PI[sizePI]);
+                    sizePI--;
+                  }
+                  PI=tmpVect;
+
+
+                }
         } // end of init from log
         else {
                 // normal initialization
 
-                std::cout<<"applying pesa 3! \n";
 
                 PI.reserve(par.internalPopulationSize);
 
@@ -454,7 +589,8 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
         std::vector<geneticEngine::individual> childPop;
 
-        int iter = lastIter;
+        int iter = 0;
+        std::cout<<"iter" <<iter <<"\n";
         std::cout <<"Num iterations" <<par.numOfIterations <<"\n";
 
         // for (unsigned i = 0; i < PI.size(); i++) {
@@ -557,6 +693,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                                         //  std::cout<<"frontResultant fitness" <<frontResultant[i][j].fitness   <<"\n";
 
                                         nextPop.push_back(frontResultant.at(i).at(j) );
+                                        logEntry(frontResultant.at(i).at(j) );
                                 }
                                 /*  for (unsigned int r=0;r<nextPop.size();++r) {
                                       std::cout<<"nextPop fitness" << nextPop[r].fitness   <<"\n";
@@ -580,6 +717,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                                 for (int r=0; r< neededIndividuals; r++   ) {
                                         nextPop.push_back(frontResultant.at(i).at(r) );
+                                        logEntry(frontResultant.at(i).at(r) );
                                 }
 
                                 break;
@@ -587,7 +725,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                 }
                 // Some output if desired
-		            std::cout<<"Before ERT!"<< "\n";
+		            //std::cout<<"Before ERT!"<< "\n";
                 if (haveValidProgressObject()) {
                         std::ostringstream oss;
 
@@ -631,6 +769,17 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                         getProgressObject().step(oss.str());
                 }
+
+                // Log which iteration has been currently logged
+                if (par.logFront) {
+                  std::ostringstream oss;
+                  oss << ";; Iteration: " << iter << "  Front size: " << par.internalPopulationSize
+                      << "  New individuals: " << par.internalPopulationSize;
+                  oss << " (MR: " <<
+                    mutationRate*geneticTools->getChromosomeSize() << " bits)";
+                  (*logOut_) << oss.str() << std::endl;
+                }
+
                 // end of analysis?
                 if ((++iter >= par.numOfIterations) ||
                     (haveValidProgressObject() &&
@@ -652,7 +801,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                         }
                         break;
                 }
-                else{  
+                else{
 		       //PE.push_back( nextPop[0] );
 		       //PE.push_back( nextPop[1] );
                       //  mutationRate = ((initialMutationRate-finalMutationRate)*

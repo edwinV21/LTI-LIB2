@@ -502,6 +502,43 @@ class NSGA2 : public geneticEngine {
 
     virtual bool initInternalPopulation(std::vector<geneticEngine::individual>& data);
 
+
+
+
+    /**
+     * Get data from log
+     *
+     * If a log file is generated, usually you cannot read the used
+     * parameterization.  With this method you will get from the log file the
+     * list of parameters and their corresponding fitness values, as if you
+     * had used the corresponding apply method.
+     *
+     * The parameters of the current functor will change without invalidating
+     * the reference.  Therefore this method is not constant.
+     */
+
+
+    virtual bool getDataFromLog(const std::string& logFile,
+                        geneticEngine::parameters& params,
+                        std::vector<individual>& data,
+                        dmatrix& boundingBox,
+                        int& lastIter) const;
+
+  /**
+  * The log-file has in the comments the iteration number.  We can
+  * try to rescue that number from there.
+  */
+
+  int findLastIter(const std::string& logFile) const;
+
+
+  bool logEntry(const geneticEngine::individual& ind,const bool markDead=false);
+
+
+
+
+
+
     /**
      * Makes the computation of the Fast Non Dominant Sort Algorithm
      * @param pop population to be applied this algorithm
