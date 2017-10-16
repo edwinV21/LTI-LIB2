@@ -101,7 +101,7 @@ namespace lti {
    * @return true if write was succeful
    */
   bool dummyFunctor::parameters::write(ioHandler& handler,
-                                         const bool& complete) const {
+                                         const bool complete) const {
     bool b = true;
     if (complete) {
       b = handler.writeBegin();
@@ -129,7 +129,7 @@ namespace lti {
    * @return true if read was succeful
    */
   bool dummyFunctor::parameters::read(ioHandler& handler,
-                                        const bool& complete) {
+                                        const bool complete) {
     bool b = true;
     if (complete) {
       b = handler.readBegin();

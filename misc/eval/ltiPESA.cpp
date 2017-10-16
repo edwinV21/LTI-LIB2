@@ -345,10 +345,13 @@ PESA::PESA() {
                                   std::vector<geneticEngine::individual>& data,
                                   dmatrix& boundingBox,
                                   int& lastIter) const {
+
    std::ifstream in(logFile.c_str());
    lastIter=0;
+
    if (in) {
      lispStreamHandler lsh(in);
+
      if (params.read(lsh)) {
        data.clear();
        initBoundingBox(boundingBox);
@@ -357,8 +360,9 @@ PESA::PESA() {
        // read data one by one
        while (lsh.tryBegin()) {
          data.push_back(individual());
-         individual& indiv = data[data.size()-1];
+         geneticEngine::individual& indiv = data[data.size()-1];
          ok = indiv.fitness.read(lsh);
+
          updateBoundingBox(indiv.fitness,boundingBox);
          ok = lsh.readDataSeparator() && ok;
          ok = lsh.read(str) && ok;
@@ -449,7 +453,7 @@ PESA::PESA() {
 
    // The PESA Algorithm
    bool PESA::apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog) {
-    // std::cout<<"applying pesa 1! \n";
+    // std::cout<<"applying pesa IN FACTORY! \n";
 
      const geneticEngine::parameters& par = geneticEngine::getParameters();
      const genetics* geneticTools = &par.getGeneticsObject();
@@ -505,7 +509,8 @@ PESA::PESA() {
        if (haveValidProgressObject()) {
          getProgressObject().step("Initialization from log file.");
        }
-       if (getDataFromLog(par.logFilename,getRWParameters(),PI,bbox_,lastIter)){
+       std::cout<<"logFilename" << par.logFilename <<"\n";
+       if (getDataFromLog(par.logFilename,geneticEngine::getRWParameters(),PI,bbox_,lastIter)){
          // we need to re-adapt the parameters from the log file
          if (haveValidProgressObject()) {
            getProgressObject().setMaxSteps(par.numOfIterations+2);
@@ -823,9 +828,9 @@ PESA::PESA() {
      if (logFront_) {
        if (notNull(logOut_)) {
          //std::cout <<"log out no es nulo \n";
-        // logOut_->close();
-        // delete logOut_;
-        // logOut_ = 0;
+         //logOut_->close();
+         //delete logOut_;
+         //logOut_ = 0;
        }
      }
 
@@ -1050,7 +1055,7 @@ PESA::PESA() {
          olsh_.writeBegin();
          ind.fitness.write(olsh_);
          olsh_.writeDataSeparator();
-         chromosomeToString(ind.genotype,str);
+         geneticEngine::chromosomeToString(ind.genotype,str);
          olsh_.write(str);
          olsh_.writeEnd();
          if (markDead) {

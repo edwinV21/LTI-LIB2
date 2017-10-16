@@ -77,6 +77,90 @@ namespace lti {
    }
  }
 
+ bool geneticEngine::initLog() {
+   if (notNull(logOut_)) {
+     delete logOut_;
+     logOut_=0;
+   }
+
+
+   const geneticEngine::parameters& par = getParameters();
+   logFront_ = par.logFront; // update shadow attribute of parameter
+
+   if (logFront_) {
+
+     logOut_ = new std::ofstream(par.logFilename.c_str());
+     if (isNull(logOut_)) {
+       setStatusString("Error opening log file.  Check your parameters.");
+       return false;
+     }
+
+     olsh_.use(*logOut_);
+
+     olsh_.writeComment(std::string("Protocol for ") +
+                       par.getGeneticsObject().name());
+
+     par.write(olsh_);
+     olsh_.writeComment("Data");
+   }
+
+   return true;
+ }
+
+
+ bool geneticEngine::parameters::write(ioHandler& handler,
+                                      const bool complete) const {
+    bool b = true;
+    if (complete) {
+      b = handler.writeBegin();
+    }
+
+    if (b) {
+
+      lti::write(handler,"crossoverProbability",crossoverProbability);
+      lti::write(handler,"initialMutationRate",initialMutationRate);
+      lti::write(handler,"finalMutationRate",finalMutationRate);
+      lti::write(handler,"mutationDecayRate",mutationDecayRate);
+      lti::write(handler,"externalPopulationSize",externalPopulationSize);
+      lti::write(handler,"internalPopulationSize",internalPopulationSize);
+      lti::write(handler,"fitnessSpaceDimensionality",
+                         fitnessSpaceDimensionality);
+      lti::write(handler,"numOfIterations",numOfIterations);
+      lti::write(handler,"logAllEvaluations",logAllEvaluations);
+      lti::write(handler,"fitnessSpacePartition",fitnessSpacePartition);
+      lti::write(handler,"sortResult",sortResult);
+
+      lti::write(handler,"numberOfThreads",numberOfThreads);
+
+      // serializing the genetics object is sort of difficult
+      if (notNull(geneticsObject_)) {
+        // if there is a valid genetics object just save the name of the class
+        // and the state of that class
+        lti::write(handler,"geneticsObject",geneticsObject_->name());
+        lti::write(handler,"geneticsConfig",*geneticsObject_);
+      } else {
+        lti::write(handler,"geneticsObject","void");
+      }
+
+      lti::write(handler,"logFront",logFront);
+      lti::write(handler,"logFilename",logFilename);
+
+      lti::write(handler,"createFrontFile",createFrontFile);
+      lti::write(handler,"frontFile",frontFile);
+      lti::write(handler,"randomParams",randomParams);
+
+    }
+
+    b = b && functor::parameters::write(handler,false);
+
+    if (complete) {
+      b = b && handler.writeEnd();
+    }
+
+    return b;
+  }
+
+
 
  /*
  * initialize the geneticEngine with the necessary variables from the paretoFront
@@ -336,14 +420,16 @@ namespace lti {
 
 
       lti::read(handler,"numberOfThreads",numberOfThreads);
-
-
       std::string str;
       delete geneticsObject_;
       geneticsObject_=0;
 
       lti::read(handler,"geneticsObject",str);
-      if (str!="void") {
+      std::cout <<"reading geneticsObject!" <<  str.empty()  <<"\n";
+
+
+      if (str!="void" ) {
+        std::cout<<"reading genetic Object" <<"\n";
         // only if a valid object was stored
         geneticsObject_=
           factory<genetics>::getFactory().newInstance(str);

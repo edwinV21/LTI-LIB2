@@ -99,7 +99,7 @@ namespace lti {
        *        be also written, otherwise only the data block will be written.
        * @return true if write was successful
        */
-      virtual bool write(ioHandler& handler,const bool& complete=true) const;
+      virtual bool write(ioHandler& handler,const bool complete=true) const;
 
       /**
        * Read the parameters from the given ioHandler
@@ -108,7 +108,7 @@ namespace lti {
        *        be also written, otherwise only the data block will be written.
        * @return true if write was successful
        */
-      virtual bool read(ioHandler& handler,const bool& complete=true);
+      virtual bool read(ioHandler& handler,const bool complete=true);
 
       // ------------------------------------------------
       // the parameters

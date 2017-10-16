@@ -524,9 +524,11 @@ namespace lti {
 
       _lti_debug("Pareto Front:\n");
       unsigned int i;
+      std::cout<<"saving PE!" <<"\n";
       for (i=0;i<PE.size();++i) {
         front.getRow(i).copy(PE[i].fitness);
         if (par.createFrontFile) {
+        //  std::cout<<"editing front file!" <<   <<"\n";
           phenotypes[i] =
             par.getGeneticsObject().chromosomeToPhenotype(PE[i].genotype);
         }
@@ -609,7 +611,7 @@ namespace lti {
                            std::vector<functor::parameters*>& phenotypes) {
 
     const geneticEngine::parameters& par = engine_->getParameters();
-
+    std::cout << "resuming 1 \n";
     trash(phenotypes); // ensure that we removed all thing maybe allocated
                        // before
 
@@ -652,7 +654,7 @@ namespace lti {
 
   // On copy apply for type matrix!
   bool paretoFront::resume(matrix<double>& front) {
-
+    std::cout << "resuming 2 \n";
     const geneticEngine::parameters& par = engine_->getParameters();
 
     // some attributes need initialization before calling PESA
@@ -664,7 +666,7 @@ namespace lti {
 
     engine_->initAlg(bbox_,sigmas_ ,rnd_,logEvaluations_, logFront_ , olsh_, logOut_,deadIndividuals_,expLUT_   );
     engine_->setProgressObject(static_cast<progressInfo&>(getProgressObject()) );
-
+  //  engine_->set
     if (engine_->apply(PE,true)) { // "true" means initFromLog
 
       // convert the PE vector into the standard output expected by the user

@@ -34,9 +34,9 @@ typedef ios ios_base;
 
 namespace lti {
 
-  /*
-   * Default Constructor
-   */
+/*
+ * Default Constructor
+ */
 NSGA2::NSGA2() {
 }
 /*
@@ -89,10 +89,10 @@ NSGA2* NSGA2::newInstance() const {
 
 
 /*
-*
-* Initialize the NSGA2 parameters
-*
-*/
+ *
+ * Initialize the NSGA2 parameters
+ *
+ */
 NSGA2::parameters::parameters()
         : functor::parameters() {
 
@@ -252,13 +252,13 @@ struct  NSGA2::sortByCrowdingDistance
 };
 
 /*
-* Apply Method of the genetic Algorithm, this executes the NSGA-II Algorithm
-* with the specified parameters
-* @param PE resultant population
-* @param initFromLog flag that specifies if the execution should be resumed from a log file
-* @return return true if the algorithm was executed correctly
-*
-*/
+ * Apply Method of the genetic Algorithm, this executes the NSGA-II Algorithm
+ * with the specified parameters
+ * @param PE resultant population
+ * @param initFromLog flag that specifies if the execution should be resumed from a log file
+ * @return return true if the algorithm was executed correctly
+ *
+ */
 bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog) {
 
         const geneticEngine::parameters& par = geneticEngine::getParameters();
@@ -269,16 +269,16 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                 return false;
         }
         // set the shadow for the mutation rate
-        const double initialMutationRate = (par.initialMutationRate < 0.0) ?
+      /*  const double initialMutationRate = (par.initialMutationRate < 0.0) ?
                                            abs(par.initialMutationRate)/geneticTools->getChromosomeSize() :
                                            par.initialMutationRate;
 
         const double finalMutationRate = (par.finalMutationRate < 0.0) ?
                                          abs(par.finalMutationRate)/geneticTools->getChromosomeSize() :
                                          par.finalMutationRate;
-
+*/
         // initial value for mutation rate
-        double mutationRate = 70;
+        double mutationRate = 100;
 
         std::vector<geneticEngine::individual> PI; // internal population
         vector<ubyte> mtSuccess; // success flags for multi-threading mode
@@ -299,7 +299,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
         }
 
         // ensure that the PE and PI vectors will have all memory they need
-        PE.reserve(par.internalPopulationSize+par.externalPopulationSize+1);
+      //  PE.reserve(par.internalPopulationSize+par.externalPopulationSize+1);
 
 
         if (par.numberOfThreads > 1) {
@@ -454,17 +454,26 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
         std::vector<geneticEngine::individual> childPop;
 
-        int numGenerations =0;
+        int iter = lastIter;
         std::cout <<"Num iterations" <<par.numOfIterations <<"\n";
 
-        for (unsigned i = 0; i < PI.size(); i++) {
-                std::cout<<  PI[i].fitness  <<"\n";
+        // for (unsigned i = 0; i < PI.size(); i++) {
+        //        std::cout<<  PI[i].fitness  <<"\n";
+        //}
+
+        timer chrono(timer::Wall); // timer used to estimate remaining time
+        double startTime(0.0);
+        int startIteration(0);
+        std::cout<<"applying NSGA 2 start iteration"<<  startIteration <<"\n";
+
+        if (haveValidProgressObject()) {
+                chrono.start();
+                startTime=chrono.getTime();
+                startIteration=getProgressObject().getStep();
         }
 
-
-
         while(true) {
-                std::cout<<  "POPULATION IN ITERATION " <<numGenerations << "\n";
+                std::cout<<  "POPULATION IN ITERATION " <<iter << "\n";
                 std::cout<<  "SIZE " <<PI.size() << "\n";
 
                 for (unsigned i = 0; i < PI.size(); i++) {
@@ -474,7 +483,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                 // mutationRate = ((initialMutationRate-finalMutationRate)) + finalMutationRate;
 
-                selection(PI,100,childPop);
+                selection(PI,mutationRate,childPop);
 
                 for (unsigned int i=0; i<PI.size(); ++i) {
                         // for each individual in the internal pop.
@@ -505,7 +514,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                                 }
                         }
                         else{
-                          queueProcessor_.evaluate(childPop,mtSuccess,*geneticTools);
+                                queueProcessor_.evaluate(childPop,mtSuccess,*geneticTools);
 
                         }
                 }
@@ -577,18 +586,77 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                         }
 
                 }
-                numGenerations++;
+                // Some output if desired
+		            std::cout<<"Before ERT!"<< "\n";
+                if (haveValidProgressObject()) {
+                        std::ostringstream oss;
 
-                if(numGenerations>=par.numOfIterations) {
+                        oss << "Front size: " << PI.size()  ;
+                        //    << " \tNew individuals: " << inserted;
+
+
+                        // first, compute the elapsed time since the first iteration in secs
+                        double t  = (chrono.getTime()-startTime)/1000000.0;
+
+                        const int currentStep = getProgressObject().getStep();
+
+                        if (currentStep > startIteration) {
+
+                                // estimated remaining time in seconds
+                                t *= (double(getProgressObject().getMaxSteps() - currentStep - 1)/
+                                      double(currentStep - startIteration));
+
+                                const int days  = static_cast<int>(t/(60*60*24));
+                                t -= (days*(60*60*24));
+                                const int hours = static_cast<int>(t/(60*60));
+                                t -= (hours*60*60);
+                                const int mins  = static_cast<int>(t/60);
+                                t -= mins*60;
+                                const int secs  = iround(t);
+
+                                oss << " \tERT: ";
+
+                                if (days > 0) {
+                                        oss << days << "d " << hours << "h";
+                                } else if (hours > 0) {
+                                        oss << hours << "h " << mins << "m";
+                                } else if (mins > 0) {
+                                        oss << mins << "m " << secs << "s";
+                                } else if (secs > 0) {
+                                        oss << secs << "s";
+                                } else if (t>0.0) {
+                                        oss << t << "s";
+                                }
+                        }
+
+                        getProgressObject().step(oss.str());
+                }
+                // end of analysis?
+                if ((++iter >= par.numOfIterations) ||
+                    (haveValidProgressObject() &&
+                     getProgressObject().breakRequested())) {
+
+                        // Some output if desired
+                        if (haveValidProgressObject()) {
+                                if (iter >= par.numOfIterations) {
+                                        getProgressObject().step("Ready.");
+                                } else {
+                                        getProgressObject().step("Stopped by the user.");
+                                }
+                        }
+                        PE.clear();
+                        PE=nextPop ;
+                        for (unsigned int i = 0; i < PE.size(); i++) {
+                          std::cout<< "PEE!" <<PE[i].fitness <<"\n";
+			 // PE.push_back( nextPop[i] );
+                        }
                         break;
                 }
-                else{
-                        /*std::cout <<"resulting pop \n";
-                           for (unsigned i = 0; i < nextPop.size(); i++) {
-                           std::cout<<  nextPop[i].fitness  <<"\n";
-                           }*/
-
-
+                else{  
+		       //PE.push_back( nextPop[0] );
+		       //PE.push_back( nextPop[1] );
+                      //  mutationRate = ((initialMutationRate-finalMutationRate)*
+                      //  exp(-iter/par.mutationDecayRate)) + finalMutationRate;
                         PI=nextPop;
                 }
 
@@ -599,13 +667,13 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
 }
 /*
-* Merges the child Population with the parent population
-* and verifies if there are duplicated members
-*
-* @param parentPop parent Population and the resultant population of the merge
-* @param childPop child population that will be merged
-*
-*/
+ * Merges the child Population with the parent population
+ * and verifies if there are duplicated members
+ *
+ * @param parentPop parent Population and the resultant population of the merge
+ * @param childPop child population that will be merged
+ *
+ */
 
 void NSGA2::mergePop(std::vector<geneticEngine::individual>& parentPop,
                      std::vector<geneticEngine::individual>& childPop){
@@ -672,13 +740,13 @@ int NSGA2::binaryTournament(const std::vector<individual>& PE) const {
 }
 
 /*
-* Returns a child population by making a crossover or mutation
-*of a given population
-* @param parentPop parent Population
-* @param mutationRate rate that specifies how much the new population should be mutated
-* @param childPop resultant population
-*
-*/
+ * Returns a child population by making a crossover or mutation
+ **of a given population
+ * @param parentPop parent Population
+ * @param mutationRate rate that specifies how much the new population should be mutated
+ * @param childPop resultant population
+ *
+ */
 
 void NSGA2::selection(std::vector<geneticEngine::individual>& parentPop, double mutationRate,
                       std::vector<geneticEngine::individual>& childPop) {

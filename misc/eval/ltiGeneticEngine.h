@@ -98,6 +98,17 @@ class geneticEngine: public functor, public progressReporter   {
      * @return a reference to this parameters object
      */
     parameters& copy(const parameters& other);
+    
+
+    /**
+     * Write the parameters in the given ioHandler
+     * @param handler the ioHandler to be used
+     * @param complete if true (the default) the enclosing begin/end will
+     *        be also written, otherwise only the data block will be written.
+     * @return true if write was successful
+     */
+    virtual bool write(ioHandler& handler,const bool complete=true) const;
+
 
 
     /**
@@ -614,6 +625,16 @@ class geneticEngine: public functor, public progressReporter   {
      * per each axis.
      */
     dvector sigmas_;
+
+
+
+    /**
+     * Initialize log.
+     *
+     * This method reinitializes the log.  It writes the functor parameters
+     * and internal configuration.
+     */
+    bool initLog();
 
 
     /**
