@@ -857,9 +857,9 @@ int NSGA2::binaryTournament(const std::vector<individual>& PE) const {
         if (size <= 1) {
                 return 0;
         } else if (size <= 2) {
-                if (PE[0].squeezeFactor < PE[1].squeezeFactor) {
+                if (PE[0].squeezeFactor > PE[1].squeezeFactor) {
                         return 0;
-                } else if (PE[0].squeezeFactor > PE[1].squeezeFactor) {
+                } else if (PE[0].squeezeFactor < PE[1].squeezeFactor) {
                         return 1;
                 } else {
                         return (rnd_.rand() < 0.5) ? 0 : 1;
@@ -878,9 +878,9 @@ int NSGA2::binaryTournament(const std::vector<individual>& PE) const {
         //   std::cout <<"A"<< a << "\n";
 //     std::cout <<"B"<< b << "\n";;
 
-        if (PE[a].squeezeFactor < PE[b].squeezeFactor) {
+        if (PE[a].squeezeFactor > PE[b].squeezeFactor) {
                 return a;
-        } else if (PE[a].squeezeFactor > PE[b].squeezeFactor) {
+        } else if (PE[a].squeezeFactor < PE[b].squeezeFactor) {
                 return b;
         } else {
                 return (rnd_.rand() < 0.5) ? a : b;
