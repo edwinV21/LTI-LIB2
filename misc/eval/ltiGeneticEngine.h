@@ -1,6 +1,12 @@
 
-
-
+/*--------------------------------------------------------------------
+ * project ....: LTI-Lib: Image Processing and Computer Vision Library
+ * file .......: ltiGeneticEngine.h
+ * authors ....: Edwin Vasquez
+ * organization: LTI, Tecnologico de Costa Rica
+ * creation ...: 01.09.2017
+ * revisions ..:
+ */
 
 #ifndef _LTI_GENETIC_ENGINE_H_
 #define _LTI_GENETIC_ENGINE_H_
@@ -16,7 +22,7 @@
 #include <sstream>
 #include "ltiMatrix.h"
 #include "ltiLispStreamHandler.h"
-
+#include "ltiSemaphore.h"
 
 
 
@@ -32,17 +38,26 @@ namespace std {
 
 
 
-
-
 namespace lti{
 
+
+  /**
+   * ltiGeneticEngine
+   *
+   * Factory that creates the Genetic Algorithm specified,
+   */
 
 class geneticEngine: public functor, public progressReporter   {
   public :
 
-  //virtual bool apply(std::vector<paretoFront::individual>& PE,const bool initFromLog)=0;
   typedef genetics::chromosome chromosome;
 
+
+  /**
+   * The parameters for the class Genetic Engine.
+   *
+   * These are specific parameters for the computation of the NSGA2 or PESA algorithm.
+   */
 
   class parameters : public functor::parameters {
   public:
@@ -60,9 +75,6 @@ class geneticEngine: public functor, public progressReporter   {
 
 
     ~parameters();
-
-
-
 
 
     /**
@@ -86,6 +98,17 @@ class geneticEngine: public functor, public progressReporter   {
      * @return a reference to this parameters object
      */
     parameters& copy(const parameters& other);
+    
+
+    /**
+     * Write the parameters in the given ioHandler
+     * @param handler the ioHandler to be used
+     * @param complete if true (the default) the enclosing begin/end will
+     *        be also written, otherwise only the data block will be written.
+     * @return true if write was successful
+     */
+    virtual bool write(ioHandler& handler,const bool complete=true) const;
+
 
 
     /**
@@ -96,9 +119,6 @@ class geneticEngine: public functor, public progressReporter   {
      * @return true if write was successful
      */
     virtual bool read(ioHandler& handler,const bool complete=true);
-
-
-
 
 
 
@@ -433,20 +453,47 @@ class geneticEngine: public functor, public progressReporter   {
      */
     virtual geneticEngine* newInstance() const;
 
+    /*
+    * Default Constructor
+    *
+    */
+
     geneticEngine();
+
+    /*
+    * Default Destructor
+    *
+    */
     virtual ~geneticEngine();
+
+    /**
+     * Copy constructor
+     * @param other the parameters object to be copied
+     */
 
     geneticEngine(const geneticEngine& other);
 
+    /**
+     * Copy data of "other" functor.
+     * @param other the functor to be copied
+     * @return a reference to this functor object
+     */
+
     geneticEngine& copy(const geneticEngine& other);
+
+    /**
+     * Returns used parameters
+     */
 
     const parameters& getParameters() const;
 
+    /**
+     * Returns used parameters
+     */
+
     parameters& getRWParameters();
 
-    //void setParetoFront(paretoFront* pPf);
 
-//    paretoFront* pf_;
 
 //  protected:
 
@@ -481,6 +528,7 @@ class geneticEngine: public functor, public progressReporter   {
 
       std::vector<individual> domination_set;
 
+      int id;
 
       /**
        * Chromosome.
@@ -579,6 +627,16 @@ class geneticEngine: public functor, public progressReporter   {
     dvector sigmas_;
 
 
+
+    /**
+     * Initialize log.
+     *
+     * This method reinitializes the log.  It writes the functor parameters
+     * and internal configuration.
+     */
+    bool initLog();
+
+
     /**
      * Get data from log
      *
@@ -636,8 +694,22 @@ class geneticEngine: public functor, public progressReporter   {
     bool logFront_;
 
 
+    /*
+    * Apply Method of the genetic Algorithm, this executes the NSGA-II or PESA Algorithm
+    * with the specified parameters
+    * @param PE resultant population
+    * @param initFromLog flag that specifies if the execution should be resumed from a log file
+    * @return return true if the algorithm was executed correctly
+    *
+    */
 
     virtual bool apply(std::vector<geneticEngine::individual>& PE,const bool initFromLog);
+
+
+    /*
+    * initialize the geneticEngine with the necessary variables from the paretoFront
+    *
+    */
 
     virtual void initAlg(dmatrix& bbox_,dvector& sigmas_ ,univariateContinuousDistribution& rnd_,
        bool& logEvaluations_, bool& logFront_ , lispStreamHandler& olsh_,std::ofstream* logOut_,
@@ -687,7 +759,7 @@ class geneticEngine: public functor, public progressReporter   {
       /**
        * Semaphore for inter-thread communication
        */
-      semaphore sem_;
+      lti::semaphore sem_;
 
       /**
        * Protect the attributes
