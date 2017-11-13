@@ -63,7 +63,7 @@ class NSGA2 : public geneticEngine {
     *
     */
     void selection(std::vector<geneticEngine::individual>& parentPop,double mutationRate,
-      std::vector<geneticEngine::individual>& childPop);
+      std::vector<geneticEngine::individual>& childPop,int popSize);
 
     /*
     * Merges the child Population with the parent population

@@ -1,0 +1,27 @@
+Pareto Front
+
+This example creates GNU-Plot files for the output of the examples using a
+lti::paretoFront derived class (see example cwagmeval).
+
+It can generate graphics for 2D and 3D Pareto Fronts.
+
+After compiling (just execute "make") you need a data file (pareto.log,
+pareto.log.pf or similar) for which the front will be generated.
+
+As an example:  if you executed the cwagmeval example then just do 
+
+> pareto -p test.gp -x ../cwagmeval/pareto.log.pf
+
+This will create a GNU-Plot script test.gp that can be executed with
+
+> gnuplot -persist test.gp
+
+  (you can close the window presing 'q')
+
+You can edit test.gp to fit your need, and as a hint, if you replace -x with
+-f, the generated script will instruct gnuplot to export an xfig file or with
+-e an eps file.
+
+You can specify several files at the same time, so that different fronts are
+plotted on the same graphic.  With -a you can also get the front of all
+fronts.
