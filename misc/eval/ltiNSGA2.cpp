@@ -498,7 +498,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                   std::vector<geneticEngine::individual> tmpVect;
                   unsigned int sizePI=PI.size()-1;
                   std::cout <<"size PI!"<< sizePI <<"\n";
-                  for(unsigned int j=0;j<par.internalPopulationSize;j++){
+                  for(int j=0;j<par.internalPopulationSize;j++){
                     std::cout <<"fitness in sizePi!"<< PI[sizePI].fitness <<"\n";
                     tmpVect.push_back(PI[sizePI]);
                     sizePI--;
@@ -622,6 +622,9 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                 // mutationRate = ((initialMutationRate-finalMutationRate)) + finalMutationRate;
 
                 selection(PI,mutationRate,childPop,par.internalPopulationSize);
+		
+ 		   
+		
 
                 for (unsigned int i=0; i<childPop.size(); ++i) {
                         // for each individual in the internal pop.
@@ -656,16 +659,21 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
 
                         }
                 }
+
+		//for (unsigned int i=0;i<childPop.size();++i) {
+                 //    std::cout<<"child "<<childPop[i].fitness <<"\n";
+
+//                   }
                 //PI.insert( PI.begin(),childPop.begin(),childPop.end()   );
 
                 mergePop(PI,childPop);
                 std::cout <<"after merged!" <<  PI.size()<<"\n";
 
-                //   for (unsigned int i=0;i<PI.size();++i) {
-                //     std::cout<<"fitness "<<PI[i].fitness <<"\n";
+                   //for (unsigned int i=0;i<PI.size();++i) {
+                    // std::cout<<"fitness "<<PI[i].fitness <<"\n";
                      //std::cout<<"squeezeFactor "<<PI[i].squeezeFactor <<"\n";
 
-                //   }
+                   //}
 
                 frontResultant.clear();
                 fastNonDominatedSort(PI,frontResultant);
@@ -687,7 +695,8 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                 for (unsigned int i=0; i<frontResultant.size(); ++i) {
                         //   std::cout<<"Frontier NUMBER "<<i <<"\n";
 			//std::cout<<"nextPop Size!" <<nextPop.size();
-                        if( nextPop.size()+ frontResultant.at(i).size() <=par.internalPopulationSize  ) {
+			
+                        if( nextPop.size()+ frontResultant.at(i).size() <=(unsigned int)par.internalPopulationSize  ) {
 
                                 // std::cout<<"isLESS!" <<nextPop.size()+ frontResultant.at(i).size() <<"\n";
                                 //std::cout<<"isLESS!"<<"\n";
@@ -814,6 +823,7 @@ bool NSGA2::apply(std::vector<geneticEngine::individual>& PE,const bool initFrom
                         //mutationRate = ((initialMutationRate-finalMutationRate)*
                         //exp(-iter/par.mutationDecayRate)) + finalMutationRate;
 			                    std::cout<<"mutation rate"<<mutationRate <<"\n";
+			childPop.clear();
                         PI=nextPop;
                 }
 
@@ -923,7 +933,7 @@ void NSGA2::selection(std::vector<geneticEngine::individual>& parentPop, double 
         initInternalPopulation(childPop);
 
 
-        unsigned int j;
+        int j;
         const int extPopSize =pSize;
 
 
@@ -932,6 +942,7 @@ void NSGA2::selection(std::vector<geneticEngine::individual>& parentPop, double 
                 const int a = binaryTournament(parentPop);
 
                 int b = binaryTournament(parentPop);
+		//std::cout<<"making bin tournament" <<"\n";
 
                 //   std::cout<<"makin childs!" <<   a   <<"\n";
                 //   std::cout<<"makin childs!" <<   b   <<"\n";
@@ -1004,9 +1015,7 @@ void NSGA2::calculateCrowdingDistance(std::vector<geneticEngine::individual>& no
                         //std::cout<<"initial squeezeFactor \n" <<nonDominated.at(j).squeezeFactor<<"\n";
 
                         nonDominated.at(j).squeezeFactor= nonDominated.at(j).squeezeFactor+numerator/range;
-                        //std::cout<<"fitness"   <<  nonDominated.at(j).fitness       <<"\n";
-                        //std::cout<<"result squeezeFactor \n" <<nonDominated.at(j).squeezeFactor<<"\n";
-                        //  std::cout<< nonDominated.at(j).squeezeFactor+numerator/range << "\n";
+                      
                 }
 
         }
@@ -1037,7 +1046,7 @@ NSGA2::fastNonDominatedSort(std::vector<geneticEngine::individual>& pop,
                 pop[i].dominant_count=0;
                 pop[i].domination_set.clear();
                 //std::cout<<"i" << i <<"\n";
-
+		
                 for (unsigned int j=0; j<pop.size(); ++j) {
                       //  std::cout<<"j" << j<<"\n";
                         if (  dominate( pop[i].fitness,  pop[j].fitness )   ) {
@@ -1097,12 +1106,8 @@ NSGA2::fastNonDominatedSort(std::vector<geneticEngine::individual>& pop,
 
 
         while(  true ) {
-              //std::cout<< "in while" <<"\n";
-                //   std::cout<<"value indexFront!" <<iFirstFront <<"\n";
-                //std::cout<< "size first Frontier" <<  frontiers.at(iFirstFront).size()  <<"\n";
-                //calculateCrowdingDistance(PI);
-                  //std::
-                 if(frontiers.size()==iFirstFront){
+             
+                 if(frontiers.size()==(unsigned int)iFirstFront){
                    break;
                  }
                  frontTemp= frontiers[iFirstFront];
@@ -1114,47 +1119,29 @@ NSGA2::fastNonDominatedSort(std::vector<geneticEngine::individual>& pop,
                   //std::cout<< "in for: "  <<i <<"\n";
 
                         for (j=0; j< frontTemp[i].domination_set.size(); ++j   ) {
-                                //std::cout<<  "frontTemp[i].fitness: " << frontTemp[i].fitness<< "\n";
-                                //std::cout<<  "frontTemp[i].domination_set[j].fitness: " << frontTemp[i].domination_set[j].fitness<< "\n";
-                                //std::cout<<  "frontTemp[i].domination_set[j].dominant_count: " << frontTemp[i].domination_set[j].dominant_count<< "\n";
-                                //std::cout<<  "pop[frontTemp[i].domination_set[j].id ]: " << pop[frontTemp[i].domination_set[j].id ].dominant_count<< "\n";
+                           	
+				//std::cout<<"Fitness "<<   frontTemp[i].domination_set[j].fitness  <<"\n";
+				//std::cout<<"D Count1 "<<   pop[ frontTemp[i].domination_set[j].id].dominant_count  <<"\n";
+                                //std::cout<<"D Count2 "<<   frontTemp[i].domination_set[j].dominant_count  <<"\n";
+				pop[ frontTemp[i].domination_set[j].id].dominant_count--;
+                              frontTemp[i].domination_set[j].dominant_count=pop[ frontTemp[i].domination_set[j].id].dominant_count  ;
+				
+                                
 
-                                //pop[frontTemp[i].domination_set[j].id ].dominant_count--;
-                                //std::cout<<  "dominant_COUNT!" <<  frontTemp.at(i).domination_set.at(j).dominant_count  << "\n";
+                                //if(frontTemp[i].domination_set[j].dominant_count<0) {
+                                   
 
-                                //frontTemp[i].domination_set[j].dominant_count  =pop[frontTemp[i].domination_set[j].id ].dominant_count;
+                                //}
+                                if(frontTemp[i].domination_set[j].dominant_count==0) {
 
-                                frontTemp[i].domination_set[j].dominant_count--;
-
-                                if(frontTemp[i].domination_set[j].dominant_count<0) {
-                                        //std::cout<<  "Adding to Front!"  << "\n";
-                                        //frontTemp[i].domination_set[j].rank=iFirstFront+1;
-
-                                        //geneticEngine::individual tmpInd;
-                                        //tmpInd.fitness=frontTemp[i].domination_set[j].fitness;
-
-                                        //newFront.push_back(frontTemp[i].domination_set[j]) ;
-
-                                        //usleep(1000);
-                                        //       std::cout<<"PUSHING IN NEW FRONT \n";
-
-                                }
-                                else if(frontTemp[i].domination_set[j].dominant_count==0) {
-                                        //std::cout<<  "Adding to Front!"  << "\n";
-                                        //frontTemp[i].domination_set[j].rank=iFirstFront+1;
-
-                                        //geneticEngine::individual tmpInd;
-                                        //tmpInd.fitness=frontTemp[i].domination_set[j].fitness;
-
+					//std::cout<<"Inserting: "<<frontTemp[i].domination_set[j].fitness<<"\n";
                                         newFront.push_back(frontTemp[i].domination_set[j]) ;
 
                                         //usleep(1000);
                                         //       std::cout<<"PUSHING IN NEW FRONT \n";
 
                                 }
-                                //else if (frontTemp[i].domination_set[j].dominant_count<0) {
-                                        //std::cout<<"ERROR \n";
-                                //}
+                           
                         }
                 }
                 //std::cout<<"later of for"   <<newFront.empty() <<"\n";

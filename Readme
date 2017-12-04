@@ -1,0 +1,23 @@
+Implementation of the NSGA-II Algorithm in the library Lti-Lib2.
+
+
+For installation:
+
+Replace the folder /misc in the source installation of the LTI-LIB2 already installed in your computer.
+
+To test the Algorithm you can replace the folder /examples/basicGeneticOptimization of your Lti-lib2 /examples folder, you can specify
+
+the algorithm tou want to use (PESA or NSGA-II) by modifiying the file "pareto_basic.cfg" and setting the parameters in the 
+
+next way:
+
+For PESA execution: 
+
+(engineName "PESA")
+(engineParamFile "pesa.cfg")
+
+
+For NSGA-II execution:
+
+(engineName "NSGA2")
+(engineParamFile "nsga2.cfg")
